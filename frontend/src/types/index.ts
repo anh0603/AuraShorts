@@ -1,4 +1,4 @@
-// Domain Types matching PROJECT.md Master Specification
+// Domain Types matching PROJECT.md Master Specification & docs/DATA_MODEL.md
 
 export type NicheId = 'tech' | 'finance' | 'science' | 'history';
 
@@ -51,6 +51,39 @@ export type VideoProjectStatus =
   | 'READY_TO_PUBLISH' 
   | 'PUBLISHED' 
   | 'FAILED';
+
+// Task Orchestration Lifecycle Statuses
+export type OrchestratorTaskStatus = 
+  | 'pending'
+  | 'queued'
+  | 'running'
+  | 'retrying'
+  | 'blocked'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface OrchestrationTaskItem {
+  id: string;
+  name: string;
+  type: string;
+  status: OrchestratorTaskStatus;
+  priority: number;
+  dependencies: string[];
+  duration_ms?: number;
+  error_message?: string;
+  attempt_number: number;
+  quality_gate_passed?: boolean;
+}
+
+export interface OrchestrationPlanItem {
+  id: string;
+  plan_type: string;
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
+  progress_percent: number;
+  tasks: OrchestrationTaskItem[];
+  created_at: string;
+}
 
 export interface StoryboardScene {
   id: string;

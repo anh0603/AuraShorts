@@ -10,6 +10,7 @@ import {
   Link2
 } from 'lucide-react';
 import type { VideoProject } from '../types';
+import { DagVisualizer } from '../components/orchestrator/DagVisualizer';
 
 interface DashboardViewProps {
   project: VideoProject;
@@ -214,52 +215,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Pipeline Status Flow */}
-      <div className="p-6 rounded-3xl glass-panel space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-              <Activity className="w-4 h-4 text-cyan-400" />
-              Chuỗi Quy Trình Tự Động (Standard Pipeline Checkpoints)
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Tiếp tục từ checkpoint nếu có lỗi, không làm lại các bước đắt tiền</p>
-          </div>
-          <span className="text-xs font-mono text-emerald-400 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            Checkpoint Đã Lưu
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
-          {[
-            { label: '1. Săn Xu Hướng / Nhập Link', status: 'COMPLETED', time: '1.2s' },
-            { label: '2. Sinh Kịch Bản & Fact Check', status: 'COMPLETED', time: '3.8s' },
-            { label: '3. Khớp Quyền Media', status: 'COMPLETED', time: '2.4s' },
-            { label: '4. Giọng Đọc & Lời', status: 'COMPLETED', time: '4.1s' },
-            { label: '5. Render FFmpeg', status: 'COMPLETED', time: '18.6s' },
-            { label: '6. Kiểm Định File MP4', status: 'COMPLETED', time: '0.9s' },
-            { label: '7. Phê Duyệt Kênh', status: 'CURRENT', time: 'Đang chờ' },
-            { label: '8. Đăng Đa Nền Tảng', status: 'PENDING', time: 'Theo lịch' },
-          ].map((step, idx) => (
-            <div 
-              key={idx}
-              className={`p-3.5 rounded-xl border text-xs flex flex-col justify-between ${
-                step.status === 'COMPLETED' 
-                  ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' 
-                  : step.status === 'CURRENT'
-                  ? 'bg-amber-950/30 border-amber-500/40 text-amber-300 shadow-md'
-                  : 'bg-white/5 border-white/5 text-slate-500'
-              }`}
-            >
-              <div className="font-semibold truncate">{step.label}</div>
-              <div className="text-[10px] font-mono mt-2 flex items-center justify-between">
-                <span>{step.time}</span>
-                {step.status === 'COMPLETED' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                {step.status === 'CURRENT' && <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Autonomous DAG Task Orchestrator Visualizer & Controller */}
+      <DagVisualizer planId="plan-7f28a9b1" />
     </div>
   );
 };

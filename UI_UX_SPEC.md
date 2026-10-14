@@ -82,4 +82,36 @@ AI sẽ:
    - Các thẻ provider hiển thị trạng thái "Miễn phí 100%" bằng huy hiệu xanh tươi sáng, giúp người dùng an tâm tuyệt đối về chi phí.
 
 ---
-*Bản đặc tả v2.0 này đáp ứng chính xác nhu cầu sử dụng thực tế của người vận hành.*
+
+## 4. Đặc Tả Giao Diện Điều Khiển Autonomous Task Orchestrator & DAG Tree
+
+Nhằm phục vụ giám sát quy trình tự động hóa tự chủ, giao diện Dashboard và Studio tích hợp bảng điều khiển cây phụ thuộc DAG (Directed Acyclic Graph):
+
+### 4.1. Trực Quan Hóa Cây Nhiệm Vụ (Visual DAG Tree)
+- Hiển thị trực quan luồng rẽ nhánh song song: Sau bước Kịch bản (`GENERATE_SCRIPT`), cây tự tách thành 2 nhánh chạy song song (`TTS_AUDIO` và `SEARCH_MEDIA`), sau đó hội tụ tại bước `RENDER_FFMPEG`.
+- **Mã màu & Icon trạng thái chuẩn:**
+  - `pending`: Nền xám mờ, viền mảnh.
+  - `queued`: Nền tím indigo nhạt, sẵn sàng chạy.
+  - `running`: Nền cyan phát sáng nhẹ kèm vòng tròn pulse xoay.
+  - `retrying`: Viền màu hổ phách, hiển thị số lần thử (VD: `Lần 2/3 - Thử lại sau 4s`).
+  - `blocked`: Viền cam đất có icon ổ khóa kèm lý do bị chặn.
+  - `completed`: Nền ngọc lục bảo kèm icon tích xanh và thời gian thực thi (VD: `3.4s`).
+  - `failed`: Viền đỏ hồng, hiển thị mã lỗi (VD: `HTTP 429`) và nút bấm `Thử lại`.
+  - `cancelled`: Xám gạch ngang.
+
+### 4.2. Thanh Điều Khiển Kế Hoạch Tự Chủ (Plan Controller Bar)
+- Nút **Tạm Dừng (Pause Plan):** Đóng băng các tác vụ đang chờ trong hàng đợi, cho phép worker hoàn tất bước dở dang.
+- **Tiếp Tục (Resume Plan):** Tiếp tục điều phối các tác vụ sẵn sàng sau khi người vận hành đã giải quyết sự cố.
+- **Hủy Kế Hoạch (Cancel Plan):** Giải phóng hàng đợi worker, lưu giữ các checkpoint đã hoàn thành trước đó.
+- **Thanh Tiến Trình Real-time:** Tỷ lệ % hoàn thành tính toán tự động dựa trên tổng số task (`completed_tasks / total_tasks * 100`).
+
+### 4.3. Bảng Kiểm Định Cổng Chất Lượng (Quality Gate Modal & Inspector)
+- Hiển thị chi tiết kết quả kiểm tra `ffprobe` trước khi chuyển sang bước tiếp theo:
+  - Khung hình: `1080 x 1920 (9:16) [PASSED]`
+  - Codec: `H.264 / AAC [PASSED]`
+  - Độ dài âm thanh và phụ đề: `Khớp thời gian từng từ [PASSED]`
+  - Kiểm tra frame đen bất thường: `Không phát hiện [PASSED]`
+
+---
+*Bản đặc tả v2.1 bổ sung toàn diện quy chuẩn giao diện cho Autonomous Task Orchestration.*
+
