@@ -1,0 +1,21 @@
+# Root gitignore for ai-video-shorts / storymxh
+node_modules/
+dist/
+dist-ssr/
+*.local
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+storage/media/*
+!storage/media/.gitkeep
+storage/artifacts/*
+!storage/artifacts/.gitkeep
+*.log
+.DS_Store
+Thumbs.db
