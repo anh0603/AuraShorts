@@ -42,7 +42,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
   // Selected scene
   const activeScene = project.scenes[selectedSceneIndex] || project.scenes[0];
 
-  // Simulated total duration
+  // Total duration
   const totalDuration = project.scenes.reduce((acc, sc) => acc + sc.estimated_duration_seconds, 0);
 
   // Playback timer simulation
@@ -115,22 +115,22 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     <div className="space-y-4">
       {/* Toast Notification Alert */}
       {renderToast && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-indigo-600 text-white text-xs font-medium shadow-2xl flex items-center space-x-3 border border-indigo-400 animate-fade-in">
+        <div className="fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-2xl bg-indigo-600 text-white text-xs font-semibold shadow-2xl flex items-center space-x-3 border border-indigo-400 animate-fade-in">
           <Sparkles className="w-4 h-4 text-cyan-300 animate-spin" />
           <span>{renderToast}</span>
         </div>
       )}
 
       {/* Studio Top Control Bar */}
-      <div className="p-4 rounded-xl bg-[#0F172A] border border-white/10 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 sm:p-5 rounded-3xl glass-panel flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-3 min-w-0">
-          <span className="text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+          <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 text-indigo-300 border border-indigo-500/30">
             9:16 VERTICAL
           </span>
-          <h2 className="text-sm font-semibold text-white truncate max-w-md">
+          <h2 className="text-sm sm:text-base font-bold text-white truncate max-w-lg">
             {project.title}
           </h2>
-          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30 shrink-0">
+          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">
             {project.status}
           </span>
         </div>
@@ -138,7 +138,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleUpdateSceneText(activeScene.text)}
-            className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-medium border border-white/10 flex items-center gap-1.5 transition"
+            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5 text-indigo-400" />
             <span>Lưu Kịch Bản</span>
@@ -147,7 +147,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
           <button
             onClick={handleRenderVideo}
             disabled={isRendering}
-            className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-md shadow-cyan-600/20 transition disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-cyan-600/20 transition disabled:opacity-50"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{isRendering ? 'Đang Render FFmpeg...' : 'Render Video Lại'}</span>
@@ -155,7 +155,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
 
           <button
             onClick={onOpenPublishing}
-            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition"
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Duyệt & Đăng Kênh</span>
@@ -169,22 +169,22 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
         {/* ========================================================
             LEFT PANE: Storyboard & Scenes List (4 Cols)
            ======================================================== */}
-        <div className="lg:col-span-4 p-4 rounded-xl bg-[#0F172A] border border-white/10 space-y-4 max-h-[820px] overflow-y-auto">
+        <div className="lg:col-span-4 p-5 rounded-3xl glass-panel space-y-4 max-h-[820px] overflow-y-auto">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div>
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 text-indigo-400" />
                 Danh Sách Phân Cảnh (Storyboard)
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                {project.scenes.length} cảnh • Tổng {totalDuration}s • Định dạng Shorts
+                {project.scenes.length} cảnh • Tổng {totalDuration}s • Định dạng Shorts 9:16
               </p>
             </div>
             <button 
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs flex items-center gap-1 border border-white/5"
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs flex items-center gap-1 border border-white/5"
               title="Thêm phân cảnh mới"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
 
@@ -199,15 +199,15 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
                 <div
                   key={scene.id}
                   onClick={() => setSelectedSceneIndex(idx)}
-                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-[#1E293B] border-indigo-500 shadow-md shadow-indigo-500/10'
-                      : 'bg-[#162032]/60 border-white/5 hover:bg-[#1E293B]/70 hover:border-white/10'
+                      ? 'bg-[#1E293B]/90 border-indigo-500 shadow-lg shadow-indigo-500/15'
+                      : 'bg-[#162032]/40 border-white/5 hover:bg-[#1E293B]/60 hover:border-white/10'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold ${
                         isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'
                       }`}>
                         CẢNH 0{scene.order}
@@ -220,17 +220,17 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
                     {/* Rights pill */}
                     <div className="flex items-center space-x-1">
                       {scene.media_candidate?.rights_status === 'LICENSED' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-semibold">
                           <ShieldCheck className="w-3 h-3" /> Bản quyền OK
                         </span>
                       )}
                       {needsReviewMedia && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 font-semibold">
                           <ShieldAlert className="w-3 h-3" /> Cần duyệt
                         </span>
                       )}
                       {hasRestrictedMedia && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1 font-semibold">
                           <ShieldX className="w-3 h-3" /> Chặn
                         </span>
                       )}
@@ -239,13 +239,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
 
                   {/* Editable spoken text for current scene */}
                   {isSelected ? (
-                    <div className="space-y-2 mt-2">
-                      <label className="text-[11px] font-medium text-slate-300 block">Lời bình (Spoken Script):</label>
+                    <div className="space-y-1.5 mt-2">
+                      <label className="text-[11px] font-semibold text-indigo-300 block">Lời bình (Spoken Script):</label>
                       <textarea
                         value={scene.text}
                         onChange={(e) => handleUpdateSceneText(e.target.value)}
                         rows={3}
-                        className="w-full p-2.5 rounded-lg bg-[#0B1322] border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500 leading-relaxed font-sans resize-none"
+                        className="w-full p-3 rounded-xl bg-[#0B1322] border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500 leading-relaxed font-sans resize-none shadow-inner"
                       />
                     </div>
                   ) : (
@@ -264,7 +264,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
                         e.stopPropagation();
                         handleRegenerateScene(idx);
                       }}
-                      className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-[11px] font-medium shrink-0 ml-2"
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 text-[11px] font-semibold shrink-0 ml-2"
                       title="Sinh lại lời bình và visual bằng AI"
                     >
                       <Sparkles className="w-3 h-3" />
@@ -278,16 +278,16 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
         </div>
 
         {/* ========================================================
-            CENTER PANE: 9:16 Vertical Preview Frame (4 Cols)
+            CENTER PANE: 9:16 Vertical Phone Preview Frame (4 Cols)
            ======================================================== */}
-        <div className="lg:col-span-4 p-4 rounded-xl bg-[#0F172A] border border-white/10 flex flex-col items-center">
+        <div className="lg:col-span-4 p-5 rounded-3xl glass-panel flex flex-col items-center">
           <div className="w-full flex items-center justify-between mb-3 text-xs text-slate-400">
-            <span className="font-medium text-white flex items-center gap-1.5">
+            <span className="font-bold text-white flex items-center gap-1.5">
               <Eye className="w-4 h-4 text-cyan-400" /> Khung Xem Trước (9:16)
             </span>
             <button
               onClick={() => setShowSafeZone(!showSafeZone)}
-              className={`px-2 py-1 rounded text-[11px] font-medium transition ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition ${
                 showSafeZone ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' : 'bg-white/5 text-slate-400'
               }`}
             >
@@ -295,8 +295,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             </button>
           </div>
 
-          {/* 9:16 Canvas Phone Frame */}
-          <div className="relative w-[280px] sm:w-[310px] aspect-[9/16] rounded-2xl overflow-hidden bg-black shadow-2xl border-4 border-slate-800 flex flex-col justify-between">
+          {/* 9:16 Modern Phone Frame with Dynamic Island */}
+          <div className="relative w-[280px] sm:w-[310px] aspect-[9/16] rounded-[32px] overflow-hidden bg-black shadow-2xl border-[6px] border-slate-800/90 flex flex-col justify-between">
+            {/* Dynamic Island Bar */}
+            <div className="absolute top-2 inset-x-0 mx-auto w-24 h-4 bg-black rounded-full border border-white/10 z-30 pointer-events-none flex items-center justify-end pr-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/60"></div>
+            </div>
+
             {/* Background Media */}
             <img
               src={activeScene.media_candidate?.thumbnail_url || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop&q=80'}
@@ -304,22 +309,22 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
             />
             {/* Dark gradient for subtitle contrast */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/85 pointer-events-none" />
 
             {/* Simulated Safe-Zone Overlays (Right Platform Actions) */}
             {showSafeZone && (
-              <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-10">
+              <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-10 pt-8">
                 {/* Top sound banner */}
-                <div className="self-center px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[10px] text-white flex items-center gap-1 border border-white/10">
-                  <Music className="w-3 h-3 text-indigo-400" />
+                <div className="self-center px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white flex items-center gap-1 border border-white/10">
+                  <Music className="w-3 h-3 text-cyan-400" />
                   <span>Âm thanh gốc - TechBytes VN</span>
                 </div>
 
                 {/* Right interaction column (Like, Comment, Share) */}
                 <div className="self-end space-y-3 text-center text-white/90">
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-[10px] mx-auto">♥</div>
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-[10px] mx-auto">💬</div>
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-[10px] mx-auto">↗</div>
+                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px] mx-auto">♥</div>
+                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px] mx-auto">💬</div>
+                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px] mx-auto">↗</div>
                 </div>
 
                 {/* Bottom title & safe margins */}
@@ -334,16 +339,16 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
 
             {/* Karaoke Dynamic Subtitle Display (Positioned above bottom safe area) */}
             <div className="relative z-20 px-4 pb-20 text-center">
-              <div className="inline-block bg-black/75 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg">
+              <div className="inline-block bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-2xl">
                 <p className="text-xs sm:text-sm font-bold text-white tracking-wide leading-relaxed">
                   {words.map((word, wIdx) => {
                     const isWordActive = wIdx === activeWordIndex;
                     return (
                       <span
                         key={wIdx}
-                        className={`transition-colors duration-150 inline-block mx-0.5 ${
+                        className={`transition-all duration-150 inline-block mx-0.5 ${
                           isWordActive 
-                            ? 'text-amber-400 scale-105 font-extrabold underline decoration-amber-400 underline-offset-4' 
+                            ? 'text-amber-400 scale-110 font-extrabold underline decoration-amber-400 underline-offset-4' 
                             : 'text-white'
                         }`}
                       >
@@ -365,7 +370,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
 
             {/* Progress bar */}
             <div 
-              className="w-full h-2 rounded-full bg-slate-800 cursor-pointer overflow-hidden"
+              className="w-full h-2.5 rounded-full bg-slate-800 cursor-pointer overflow-hidden shadow-inner"
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
@@ -374,7 +379,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
               }}
             >
               <div 
-                className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"
+                className="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 transition-all"
                 style={{ width: `${(currentPlaybackTime / totalDuration) * 100}%` }}
               />
             </div>
@@ -383,14 +388,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             <div className="flex items-center justify-center space-x-3 pt-2">
               <button
                 onClick={() => setCurrentPlaybackTime(0)}
-                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 transition"
                 title="Quay lại đầu"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="p-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30"
+                className="p-3.5 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white shadow-lg shadow-indigo-600/30 transition transform hover:scale-105"
                 title={isPlaying ? 'Tạm dừng' : 'Phát'}
               >
                 {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
@@ -402,10 +407,10 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
         {/* ========================================================
             RIGHT PANE: Inspector, Media Rights & Audio Mix (4 Cols)
            ======================================================== */}
-        <div className="lg:col-span-4 p-4 rounded-xl bg-[#0F172A] border border-white/10 space-y-5">
+        <div className="lg:col-span-4 p-5 rounded-3xl glass-panel space-y-5">
           {/* Header */}
           <div className="border-b border-white/10 pb-3">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Sliders className="w-4 h-4 text-cyan-400" />
               Thuộc Tính Tư Liệu & Âm Thanh
             </h3>
@@ -417,21 +422,21 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
           {/* Media Rights Inspector */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-300">Tư liệu hình ảnh:</span>
-              <span className="text-[11px] font-mono text-cyan-400">
+              <span className="text-xs font-semibold text-slate-300">Tư liệu hình ảnh:</span>
+              <span className="text-[11px] font-mono text-cyan-400 font-bold">
                 Độ phù hợp: {activeScene.media_candidate?.relevance_score}/100
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-[#1E293B] border border-white/10 space-y-2.5">
+            <div className="p-3.5 rounded-2xl bg-[#1E293B]/70 border border-white/10 space-y-3">
               <div className="flex items-start space-x-3">
                 <img
                   src={activeScene.media_candidate?.thumbnail_url}
                   alt=""
-                  className="w-16 h-16 rounded-lg object-cover border border-white/10 shrink-0"
+                  className="w-16 h-16 rounded-xl object-cover border border-white/10 shrink-0"
                 />
                 <div className="text-xs space-y-1 min-w-0">
-                  <div className="font-medium text-white truncate">
+                  <div className="font-bold text-white truncate">
                     {activeScene.media_candidate?.title}
                   </div>
                   <div className="text-[11px] text-slate-400">
@@ -444,14 +449,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
               </div>
 
               {/* Rights Verification Status */}
-              <div className={`p-2 rounded-lg text-xs flex items-center justify-between ${
+              <div className={`p-2.5 rounded-xl text-xs flex items-center justify-between ${
                 activeScene.media_candidate?.rights_status === 'LICENSED'
                   ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30'
                   : 'bg-amber-950/40 text-amber-300 border border-amber-500/30'
               }`}>
                 <div className="flex items-center space-x-1.5">
                   <ShieldCheck className="w-4 h-4 shrink-0" />
-                  <span className="font-semibold text-[11px]">
+                  <span className="font-bold text-[11px]">
                     {activeScene.media_candidate?.rights_status === 'LICENSED' 
                       ? 'Quyền Sử Dụng: Hợp Pháp (Green)' 
                       : 'Quyền Sử Dụng: Cần Người Duyệt (Yellow)'}
@@ -460,30 +465,30 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
               </div>
 
               {/* Action: Replace Media */}
-              <button className="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium border border-white/10 flex items-center justify-center gap-1.5 transition">
+              <button className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold border border-white/10 flex items-center justify-center gap-1.5 transition">
                 <Upload className="w-3.5 h-3.5" />
-                <span>Thay Tư Liệu Cá Nhân / Duyệt Lại</span>
+                <span>Thay Tư Liệu Cá Nhân / Tải Lên</span>
               </button>
             </div>
           </div>
 
           {/* Audio Mixing & Voice Profile */}
           <div className="space-y-3 pt-2 border-t border-white/10">
-            <span className="text-xs font-medium text-slate-300 block">Cấu hình giọng đọc AI (TTS):</span>
+            <span className="text-xs font-semibold text-slate-300 block">Cấu hình giọng đọc AI (TTS):</span>
 
-            <div className="p-3 rounded-xl bg-[#1E293B] border border-white/10 space-y-3 text-xs">
+            <div className="p-3.5 rounded-2xl bg-[#1E293B]/70 border border-white/10 space-y-3 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 flex items-center gap-1.5">
-                  <Mic className="w-3.5 h-3.5 text-indigo-400" /> Voice Profile:
+                  <Mic className="w-3.5 h-3.5 text-indigo-400" /> Giọng đọc:
                 </span>
-                <span className="text-white font-medium">Hoài My (Giọng Bắc Chuẩn)</span>
+                <span className="text-white font-bold">Hoài My (Giọng Bắc Chuẩn)</span>
               </div>
 
               {/* Speed Slider */}
               <div className="space-y-1">
                 <div className="flex justify-between text-slate-400">
                   <span>Tốc độ đọc:</span>
-                  <span className="font-mono text-cyan-400">{voiceSpeed}x</span>
+                  <span className="font-mono text-cyan-400 font-bold">{voiceSpeed}x</span>
                 </div>
                 <input
                   type="range"
@@ -498,19 +503,19 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
 
               {/* Linear Audio Mix Percentages according to PROJECT.md Section 55 */}
               <div className="space-y-1.5 pt-2 border-t border-white/5">
-                <span className="text-[11px] text-slate-400 block font-medium">Mức âm thanh tuyến tính (Mixing):</span>
+                <span className="text-[11px] text-slate-400 block font-semibold">Mức âm lượng tuyến tính (Mixing):</span>
                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                  <div className="p-1.5 rounded bg-[#0F172A] border border-white/5">
+                  <div className="p-2 rounded-xl bg-[#0F172A] border border-white/5">
                     <span className="text-slate-400 block">Lời đọc</span>
-                    <span className="font-mono font-bold text-emerald-400">100%</span>
+                    <span className="font-mono font-bold text-emerald-400 text-xs">100%</span>
                   </div>
-                  <div className="p-1.5 rounded bg-[#0F172A] border border-white/5">
+                  <div className="p-2 rounded-xl bg-[#0F172A] border border-white/5">
                     <span className="text-slate-400 block">Nhạc nền</span>
-                    <span className="font-mono font-bold text-indigo-400">12%</span>
+                    <span className="font-mono font-bold text-indigo-400 text-xs">12%</span>
                   </div>
-                  <div className="p-1.5 rounded bg-[#0F172A] border border-white/5">
-                    <span className="text-slate-400 block">SFX Whoosh</span>
-                    <span className="font-mono font-bold text-cyan-400">40%</span>
+                  <div className="p-2 rounded-xl bg-[#0F172A] border border-white/5">
+                    <span className="text-slate-400 block">SFX</span>
+                    <span className="font-mono font-bold text-cyan-400 text-xs">40%</span>
                   </div>
                 </div>
               </div>
@@ -519,15 +524,15 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
 
           {/* Template Selection */}
           <div className="space-y-2 pt-2 border-t border-white/10">
-            <span className="text-xs font-medium text-slate-300 block">Video Template:</span>
+            <span className="text-xs font-semibold text-slate-300 block">Video Template:</span>
             <div className="grid grid-cols-2 gap-2">
               {['News Explainer', 'Fast News', 'Tech Review', 'Top List'].map((tpl) => (
                 <button
                   key={tpl}
                   onClick={() => setSelectedTemplate(tpl)}
-                  className={`p-2 rounded-lg text-xs font-medium border text-left transition ${
+                  className={`p-2.5 rounded-xl text-xs font-semibold border text-left transition ${
                     selectedTemplate === tpl
-                      ? 'bg-indigo-600/30 border-indigo-500 text-white'
+                      ? 'bg-indigo-600/30 border-indigo-500 text-white shadow-sm'
                       : 'bg-[#1E293B] border-white/5 text-slate-400 hover:text-white'
                   }`}
                 >

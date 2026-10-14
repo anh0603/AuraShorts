@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DashboardView } from './views/DashboardView';
+import { UrlToVideoView } from './views/UrlToVideoView';
 import { VideoStudioView } from './views/VideoStudioView';
 import { AiProviderManagerView } from './views/AiProviderManagerView';
 import { TrendsView } from './views/TrendsView';
@@ -14,6 +15,11 @@ export function App() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [project, setProject] = useState<VideoProject>(INITIAL_PROJECT);
   const [providers, setProviders] = useState<AiProvider[]>(MOCK_PROVIDERS);
+
+  const handleProjectGeneratedFromUrl = (newProject: VideoProject) => {
+    setProject(newProject);
+    setCurrentTab('studio');
+  };
 
   const handleSelectTopicToCreate = (topic: TrendTopic) => {
     // Generate new project from topic and switch to studio
@@ -55,7 +61,7 @@ export function App() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#090D16] text-[#F8FAFC]">
+    <div className="flex min-h-screen bg-[#080C15] text-[#F8FAFC]">
       {/* Collapsible Left Navigation Bar */}
       <Sidebar
         currentTab={currentTab}
@@ -70,7 +76,7 @@ export function App() {
           currentTab={currentTab}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed(!collapsed)}
-          onOpenQuickCreate={() => setCurrentTab('trends')}
+          onOpenQuickCreate={() => setCurrentTab('url-to-video')}
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
@@ -81,6 +87,13 @@ export function App() {
               onOpenProviders={() => setCurrentTab('ai-providers')}
               onOpenTrends={() => setCurrentTab('trends')}
               onOpenPublishing={() => setCurrentTab('publishing')}
+              onOpenUrlToVideo={() => setCurrentTab('url-to-video')}
+            />
+          )}
+
+          {currentTab === 'url-to-video' && (
+            <UrlToVideoView
+              onProjectGenerated={handleProjectGeneratedFromUrl}
             />
           )}
 
