@@ -22,9 +22,12 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
 
   const niches = [
     { id: 'all', label: 'Tất Cả Ngách' },
+    { id: 'national', label: 'Thời Sự & Đất Nước' },
+    { id: 'geopolitics', label: 'Địa Chính Trị & Quốc Tế' },
     { id: 'tech', label: 'Công Nghệ & Bán Dẫn' },
-    { id: 'finance', label: 'Tài Chính & Crypto' },
+    { id: 'finance', label: 'Tài Chính & Kinh Tế' },
     { id: 'science', label: 'Khoa Học Đột Phá' },
+    { id: 'history', label: 'Lịch Sử Dân Tộc' },
   ];
 
   const filteredTrends = MOCK_TRENDS.filter(t => {

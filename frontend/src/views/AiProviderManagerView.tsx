@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Cpu, 
   ShieldCheck, 
   AlertTriangle, 
   RefreshCw, 
   Plus, 
   Zap, 
   Layers, 
-  Lock
+  Lock,
+  XCircle,
+  Key
 } from 'lucide-react';
 import type { AiProvider } from '../types';
+import { OrchestratorApi } from '../services/api';
 
 interface AiProviderManagerViewProps {
   providers: AiProvider[];
@@ -24,157 +26,201 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
   const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
   const [testResultFeedback, setTestResultFeedback] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<string | null>(null);
 
   // New Provider Form State
   const [newProviderName, setNewProviderName] = useState('');
   const [newBaseUrl, setNewBaseUrl] = useState('');
   const [newApiKey, setNewApiKey] = useState('');
 
-  const handleTestConnection = (provId: string) => {
-    setTestingProviderId(provId);
-    setTestResultFeedback(`Đang gửi HTTP health check tới provider ${provId}...`);
-
-    setTimeout(() => {
-      setTestingProviderId(null);
-      if (provId === 'prov-openrouter') {
-        setTestResultFeedback("OpenRouter: Phát hiện mã HTTP 429 (Rate Limit). Fallback sang Groq Cloud đã kích hoạt thành công!");
-      } else {
-        setTestResultFeedback(`Kết nối thành công tới ${provId}! HTTP 200 OK, latency ổn định.`);
+  // Fetch real providers on mount
+  useEffect(() => {
+    async function loadBackendProviders() {
+      try {
+        const res = await OrchestratorApi.getProviders();
+        if (res.success && res.data && res.data.length > 0) {
+          onUpdateProviders(res.data);
+          setBackendStatus("Đã đồng bộ với cấu hình AI Router backend.");
+        }
+      } catch (err) {
+        console.error("Could not fetch backend providers:", err);
       }
-      setTimeout(() => setTestResultFeedback(null), 4000);
-    }, 1200);
+    }
+    loadBackendProviders();
+  }, []);
+
+  const handleTestConnection = async (provId: string) => {
+    setTestingProviderId(provId);
+    setTestResultFeedback(`Đang gửi HTTP health probe tới ${provId}...`);
+
+    try {
+      const res = await OrchestratorApi.testProvider(provId);
+      setTestingProviderId(null);
+      if (res.success && res.data) {
+        const msg = res.data.message || (res.data.connected ? "Kết nối thành công!" : "Kết nối thất bại.");
+        setTestResultFeedback(`${provId}: ${msg} (${res.data.latency_ms}ms)`);
+        
+        // Update local status in state
+        onUpdateProviders(providers.map(p => {
+          if (p.id === provId) {
+            return {
+              ...p,
+              status: res.data.connected ? 'HEALTHY' : 'DEGRADED',
+              latency_ms: res.data.latency_ms || p.latency_ms,
+              last_health_check: 'Vừa kiểm tra'
+            };
+          }
+          return p;
+        }));
+      } else {
+        const errMsg = res.error?.message || "Lỗi kiểm tra kết nối.";
+        setTestResultFeedback(`${provId}: ${errMsg}`);
+      }
+    } catch (e: any) {
+      setTestingProviderId(null);
+      setTestResultFeedback(`${provId}: Lỗi kết nối: ${e.message}`);
+    }
+
+    setTimeout(() => setTestResultFeedback(null), 5000);
   };
 
-  const handleDiscoverCatalog = (provId: string) => {
+  const handleDiscoverCatalog = async (provId: string) => {
     setTestingProviderId(provId);
     setTestResultFeedback(`Đang khám phá danh mục Model Catalog từ ${provId}...`);
-    setTimeout(() => {
+
+    try {
+      const res = await OrchestratorApi.discoverProviderModels(provId);
       setTestingProviderId(null);
-      setTestResultFeedback(`Đã đồng bộ thành công danh sách model mới từ ${provId}!`);
-      setTimeout(() => setTestResultFeedback(null), 3000);
-    }, 1500);
+      if (res.success && res.data) {
+        const count = res.data.models_count || 0;
+        setTestResultFeedback(`Đồng bộ thành công! Tìm thấy ${count} model khả dụng từ ${provId}.`);
+        if (res.data.models && res.data.models.length > 0) {
+          onUpdateProviders(providers.map(p => {
+            if (p.id === provId) {
+              return {
+                ...p,
+                models_count: count,
+                models: res.data.models.map((m: any, idx: number) => ({
+                  id: m.id || `m-${idx}`,
+                  provider_id: provId,
+                  model_identifier: m.id,
+                  display_name: m.display_name || m.id,
+                  capabilities: m.capabilities || ['text_generation'],
+                  free_status: 'FREE_CONFIRMED',
+                  context_limit: m.context_limit || '32k tokens',
+                  status: 'ACTIVE'
+                }))
+              };
+            }
+            return p;
+          }));
+        }
+      } else {
+        setTestResultFeedback(`Không thể khám phá catalog từ ${provId}: ${res.error?.message}`);
+      }
+    } catch (e: any) {
+      setTestingProviderId(null);
+      setTestResultFeedback(`Lỗi khám phá catalog: ${e.message}`);
+    }
+
+    setTimeout(() => setTestResultFeedback(null), 5000);
   };
 
-  const handleAddCustomProvider = (e: React.FormEvent) => {
+  const handleAddCustomProvider = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProviderName || !newBaseUrl) return;
 
-    const newProvider: AiProvider = {
-      id: `prov-custom-${Date.now()}`,
-      name: newProviderName,
-      provider_type: 'custom_openai',
-      base_url: newBaseUrl,
-      status: 'HEALTHY',
-      priority: providers.length + 1,
-      is_free_confirmed: true,
-      models_count: 1,
-      last_health_check: 'Vừa thêm (Chưa test)',
-      latency_ms: 180,
-      quota_info: 'Custom Self-Hosted / Free tier',
-      models: [
-        {
-          id: `custom-model-01`,
-          provider_id: `prov-custom-${Date.now()}`,
-          model_identifier: 'custom-llm',
-          display_name: `${newProviderName} Default Model`,
-          capabilities: ['text_generation', 'structured_output'],
-          free_status: 'FREE_CONFIRMED',
-          context_limit: '32k tokens',
-          status: 'ACTIVE'
-        }
-      ]
-    };
+    try {
+      const res = await OrchestratorApi.addCustomProvider({
+        name: newProviderName,
+        base_url: newBaseUrl,
+        api_key: newApiKey
+      });
 
-    onUpdateProviders([...providers, newProvider]);
-    setIsAddModalOpen(false);
-    setNewProviderName('');
-    setNewBaseUrl('');
-    setNewApiKey('');
-    setTestResultFeedback(`Đã thêm provider tùy chỉnh: ${newProviderName}`);
-    setTimeout(() => setTestResultFeedback(null), 3000);
+      if (res.success && res.data) {
+        setTestResultFeedback(`Đã thêm provider: ${newProviderName} (Bảo mật SSRF PASS).`);
+        // Refresh provider list from backend
+        const refresh = await OrchestratorApi.getProviders();
+        if (refresh.success && refresh.data) {
+          onUpdateProviders(refresh.data);
+        }
+        setIsAddModalOpen(false);
+        setNewProviderName('');
+        setNewBaseUrl('');
+        setNewApiKey('');
+      } else {
+        setTestResultFeedback(`Lỗi thêm provider: ${res.error?.message}`);
+      }
+    } catch (e: any) {
+      setTestResultFeedback(`Lỗi: ${e.message}`);
+    }
+
+    setTimeout(() => setTestResultFeedback(null), 5000);
   };
 
   return (
     <div className="space-y-6">
       {/* Test feedback toast */}
       {testResultFeedback && (
-        <div className="p-3.5 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-xs text-indigo-200 flex items-center justify-between shadow-lg">
-          <div className="flex items-center space-x-2">
-            <Zap className="w-4 h-4 text-cyan-400 shrink-0" />
+        <div className="p-4 rounded-2xl bg-indigo-950/80 border border-indigo-500/40 text-white text-xs flex items-center justify-between shadow-xl animate-fade-in backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
             <span>{testResultFeedback}</span>
           </div>
-          <button onClick={() => setTestResultFeedback(null)} className="text-slate-400 hover:text-white">✕</button>
+          <button 
+            onClick={() => setTestResultFeedback(null)} 
+            className="text-slate-400 hover:text-white ml-4"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Routing Policy & Fallback Controller Bar */}
-      <div className="p-5 rounded-2xl bg-[#0F172A] border border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-white tracking-tight flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-indigo-400" />
-              Chế Độ Định Tuyến AI (AI Routing Policy)
-            </h2>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              Chi Phí: 0 VNĐ
-            </span>
+      {/* Header & Routing Policy Control */}
+      <div className="p-6 rounded-3xl glass-panel relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">
+                AI ROUTER & ORCHESTRATION ENGINE
+              </span>
+              <span className="text-xs text-slate-400">Zero-Cost Priority Engine</span>
+              {backendStatus && (
+                <span className="text-[10px] text-emerald-400 font-mono">({backendStatus})</span>
+              )}
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Quản Trị Nhà Cung Cấp AI & Điều Phối Mô Hình
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300">
+              Tự động phân bổ tác vụ cho model phù hợp nhất, tự chuyển đổi dự phòng khi gặp lỗi 429 và bảo vệ 100% ngân sách 0đ.
+            </p>
           </div>
-          <p className="text-xs text-slate-400 mt-1 max-w-xl">
-            Theo Mục 20 & 97 của PROJECT.md: Chế độ mặc định bắt buộc là <strong className="text-white">FREE_ONLY</strong>. Hệ thống chỉ sử dụng các provider và model đã xác minh miễn phí. Tuyệt đối không tự động kích hoạt gói trả phí.
-          </p>
-        </div>
 
-        {/* Policy Selector */}
-        <div className="flex items-center space-x-2 bg-[#1E293B] p-1.5 rounded-xl border border-white/10 shrink-0">
-          {[
-            { id: 'FREE_ONLY', label: 'FREE_ONLY (Bắt Buộc)' },
-            { id: 'MANUAL_PRIORITY', label: 'Ưu Tiên Thủ Công' },
-            { id: 'QUALITY_FIRST', label: 'Chất Lượng Tối Đa' },
-          ].map((pol) => (
+          {/* Policy Selector */}
+          <div className="p-2 rounded-2xl bg-[#0F172A] border border-white/10 flex items-center space-x-1 shrink-0">
             <button
-              key={pol.id}
-              onClick={() => setRoutingPolicy(pol.id as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                routingPolicy === pol.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              onClick={() => setRoutingPolicy('FREE_ONLY')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                routingPolicy === 'FREE_ONLY'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              {pol.label}
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Chỉ Dùng Miễn Phí (FREE_ONLY)</span>
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Quota & Circuit Breaker Status Banner */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-white/10 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-semibold text-white">Google Gemini API</div>
-            <div className="text-slate-400 text-[11px]">15 RPM / 1M TPM khả dụng</div>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-            <Zap className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-semibold text-white">Groq Cloud (Llama 3.3)</div>
-            <div className="text-slate-400 text-[11px]">30 RPM • Độ trễ: 110ms</div>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-semibold text-white">OpenRouter Circuit Breaker</div>
-            <div className="text-amber-300 text-[11px]">Tạm ngắt (HTTP 429) - Đã fallback sang Groq</div>
+            <button
+              onClick={() => setRoutingPolicy('MANUAL_PRIORITY')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                routingPolicy === 'MANUAL_PRIORITY'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Theo Mức Ưu Tiên</span>
+            </button>
           </div>
         </div>
       </div>
@@ -185,7 +231,7 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
           <h3 className="text-base font-semibold text-white tracking-tight">
             Danh Sách Nhà Cung Cấp Đã Cấu Hình ({providers.length})
           </h3>
-          <p className="text-xs text-slate-400">Tự khám phá model và thiết lập tự phục hồi lỗi</p>
+          <p className="text-xs text-slate-400">Tự khám phá model và thiết lập tự phục hồi lỗi với khóa API được che bảo mật</p>
         </div>
 
         <button
@@ -199,15 +245,16 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
 
       {/* Providers Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {providers.map((prov) => {
+        {providers.map((prov: any) => {
           const isTesting = testingProviderId === prov.id;
           const isDegraded = prov.status === 'DEGRADED';
+          const isOpenCircuit = prov.status === 'OPEN_CIRCUIT';
 
           return (
             <div
               key={prov.id}
               className={`p-5 rounded-2xl bg-[#0F172A] border transition-all ${
-                isDegraded
+                isDegraded || isOpenCircuit
                   ? 'border-amber-500/40 bg-amber-950/10'
                   : 'border-white/10 hover:border-indigo-500/30'
               }`}
@@ -224,6 +271,11 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                   <div className="text-xs text-slate-400 font-mono mt-1 truncate max-w-xs">
                     {prov.base_url}
                   </div>
+                  {/* Masked Secret Key Display */}
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400 font-mono">
+                    <Key className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>API Key: {prov.masked_api_key || '••••••••'}</span>
+                  </div>
                 </div>
 
                 {/* Circuit Status Badge */}
@@ -235,7 +287,17 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                   )}
                   {isDegraded && (
                     <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" /> DEGRADED (429)
+                      <AlertTriangle className="w-3 h-3" /> DEGRADED
+                    </span>
+                  )}
+                  {isOpenCircuit && (
+                    <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-rose-500/10 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                      <XCircle className="w-3 h-3" /> OPEN_CIRCUIT
+                    </span>
+                  )}
+                  {prov.status === 'UNKNOWN' && (
+                    <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-slate-500/10 text-slate-400 border border-slate-500/30">
+                      CHƯA TEST
                     </span>
                   )}
                 </div>
@@ -244,21 +306,25 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
               {/* Verified Quota & Latency Metrics */}
               <div className="grid grid-cols-2 gap-3 my-4 p-3 rounded-xl bg-[#1E293B]/70 border border-white/5 text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Hạn mức đã xác minh:</span>
-                  <span className="font-medium text-slate-200 mt-0.5 block truncate">{prov.quota_info}</span>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Trạng thái Quota:</span>
+                  <span className="font-medium text-slate-200 mt-0.5 block truncate">
+                    {prov.is_free_confirmed ? 'Miễn phí xác nhận' : 'Cần kiểm tra'}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Độ trễ trung bình:</span>
-                  <span className="font-mono text-cyan-400 mt-0.5 block">{prov.latency_ms} ms</span>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Độ trễ phản hồi:</span>
+                  <span className="font-mono text-cyan-400 mt-0.5 block">
+                    {prov.latency_ms ? `${prov.latency_ms} ms` : 'Chưa đo'}
+                  </span>
                 </div>
               </div>
 
               {/* Models List for this provider */}
               <div className="space-y-2 mb-4">
                 <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                  Mô Hình Đang Hoạt Động ({prov.models.length}):
+                  Mô Hình Đang Hoạt Động ({prov.models?.length || 0}):
                 </span>
-                {prov.models.map((model) => (
+                {prov.models?.map((model: any) => (
                   <div
                     key={model.id}
                     className="p-2.5 rounded-lg bg-[#0B1322] border border-white/5 flex items-center justify-between text-xs"
@@ -266,7 +332,7 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                     <div>
                       <div className="font-medium text-white truncate max-w-[220px]">{model.display_name}</div>
                       <div className="flex items-center gap-1 mt-1">
-                        {model.capabilities.map((cap) => (
+                        {model.capabilities?.map((cap: string) => (
                           <span key={cap} className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
                             {cap}
                           </span>
@@ -274,7 +340,7 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                       </div>
                     </div>
                     <span className="text-[10px] font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10">
-                      {model.free_status}
+                      {model.free_status || 'FREE_CONFIRMED'}
                     </span>
                   </div>
                 ))}
@@ -283,7 +349,7 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
               {/* Actions Footer */}
               <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
                 <span className="text-slate-400 text-[11px]">
-                  Kiểm tra: {prov.last_health_check}
+                  Kiểm tra: {prov.last_health_check || 'Chưa kiểm tra'}
                 </span>
 
                 <div className="flex items-center space-x-2">
@@ -319,32 +385,38 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
             <Layers className="w-4 h-4 text-cyan-400" />
             Ma Trận Phân Bổ Năng Lực AI Theo Tác Vụ (Task Routing Matrix)
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">Không hardcode model vào logic; AI Router tự chọn model phù hợp nhất theo năng lực</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Chính sách định tuyến ưu tiên model chi phí 0đ, độ ổn định cao và tự động kích hoạt fallback circuit breaker.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="p-3.5 rounded-xl bg-[#1E293B] border border-white/5 space-y-1.5">
-            <span className="text-slate-400 text-[11px] block">1. Viết Kịch Bản & Cấu Trúc</span>
-            <div className="font-semibold text-white">Gemini 1.5 Flash</div>
-            <span className="text-[10px] text-emerald-400 font-mono block">text_generation + structured_output</span>
+          <div className="p-3.5 rounded-xl bg-[#1E293B]/70 border border-white/5 space-y-1.5">
+            <div className="font-semibold text-white">1. Trích Xuất Luận Điểm</div>
+            <div className="text-[11px] text-slate-400">Yêu cầu: text_generation, context lớn</div>
+            <div className="text-[11px] text-cyan-400 font-mono">Ưu tiên 1: Groq Llama 3 70B</div>
+            <div className="text-[10px] text-slate-500">Fallback: Gemini 1.5 Flash</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#1E293B] border border-white/5 space-y-1.5">
-            <span className="text-slate-400 text-[11px] block">2. Fact-Checking & Claims</span>
-            <div className="font-semibold text-white">Llama 3.3 70B (Groq)</div>
-            <span className="text-[10px] text-cyan-400 font-mono block">High-speed cross-source reasoning</span>
+          <div className="p-3.5 rounded-xl bg-[#1E293B]/70 border border-white/5 space-y-1.5">
+            <div className="font-semibold text-white">2. Biên Tập Kịch Bản (9:16)</div>
+            <div className="text-[11px] text-slate-400">Yêu cầu: structured_output, tiếng Việt</div>
+            <div className="text-[11px] text-cyan-400 font-mono">Ưu tiên 1: Gemini 1.5 Flash</div>
+            <div className="text-[10px] text-slate-500">Fallback: Groq Llama 3 70B</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#1E293B] border border-white/5 space-y-1.5">
-            <span className="text-slate-400 text-[11px] block">3. Đánh Giá Bản Quyền & Visual</span>
-            <div className="font-semibold text-white">Gemini 1.5 Flash Vision</div>
-            <span className="text-[10px] text-indigo-400 font-mono block">vision capability verified</span>
+          <div className="p-3.5 rounded-xl bg-[#1E293B]/70 border border-white/5 space-y-1.5">
+            <div className="font-semibold text-white">3. Giọng Đọc Neural TTS</div>
+            <div className="text-[11px] text-slate-400">Yêu cầu: text_to_speech, tiếng Việt</div>
+            <div className="text-[11px] text-emerald-400 font-mono">Ưu tiên: Edge-TTS Neural (Free)</div>
+            <div className="text-[10px] text-slate-500">Giọng: vi-VN-HoaiMyNeural</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#1E293B] border border-white/5 space-y-1.5">
-            <span className="text-slate-400 text-[11px] block">4. Giọng Đọc & Timestamp</span>
-            <div className="font-semibold text-white">Vietnamese Neural TTS</div>
-            <span className="text-[10px] text-amber-300 font-mono block">forced_alignment audio ms</span>
+          <div className="p-3.5 rounded-xl bg-[#1E293B]/70 border border-white/5 space-y-1.5">
+            <div className="font-semibold text-white">4. Tổng Hợp & Render MP4</div>
+            <div className="text-[11px] text-slate-400">Yêu cầu: video_engine, ffprobe</div>
+            <div className="text-[11px] text-emerald-400 font-mono">FFmpeg Native Hardware</div>
+            <div className="text-[10px] text-slate-500">1080x1920 30FPS H.264</div>
           </div>
         </div>
       </div>

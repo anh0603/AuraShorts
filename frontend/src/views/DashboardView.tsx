@@ -14,6 +14,7 @@ import { DagVisualizer } from '../components/orchestrator/DagVisualizer';
 
 interface DashboardViewProps {
   project: VideoProject;
+  activePlanId?: string;
   onOpenStudio: () => void;
   onOpenProviders: () => void;
   onOpenTrends: () => void;
@@ -23,6 +24,7 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   project,
+  activePlanId,
   onOpenStudio,
   onOpenProviders,
   onOpenTrends,
@@ -216,7 +218,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Autonomous DAG Task Orchestrator Visualizer & Controller */}
-      <DagVisualizer planId="plan-7f28a9b1" />
+      <DagVisualizer planId={activePlanId || "plan-7f28a9b1"} />
     </div>
   );
 };

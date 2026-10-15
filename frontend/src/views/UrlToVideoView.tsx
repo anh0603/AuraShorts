@@ -12,17 +12,20 @@ import {
   Zap
 } from 'lucide-react';
 import type { VideoProject } from '../types';
+import { OrchestratorApi } from '../services/api';
 
 interface UrlToVideoViewProps {
   onProjectGenerated: (project: VideoProject) => void;
+  onPlanCreated?: (planId: string) => void;
 }
 
 export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
-  onProjectGenerated
+  onProjectGenerated,
+  onPlanCreated
 }) => {
   const [urlInput, setUrlInput] = useState('');
   const [targetDuration, setTargetDuration] = useState<'30s' | '60s' | '90s'>('60s');
-  const [storyTone, setStoryTone] = useState<'news' | 'engaging' | 'dramatic'>('engaging');
+  const [storyTone, setStoryTone] = useState<'news' | 'engaging' | 'dramatic' | 'national' | 'geopolitics'>('engaging');
   const [includeCitation, setIncludeCitation] = useState(true);
 
   // Processing state
@@ -40,6 +43,18 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
 
   // Sample articles for quick one-click test
   const sampleArticles = [
+    {
+      label: 'Thời Sự Quốc Gia: Cao Tốc & Đường Sắt',
+      url: 'https://baochinhphu.vn/thong-xe-toan-tuyen-cao-toc-bac-nam-va-duong-sat-toc-do-cao-102261015.htm',
+      title: 'Đột phá hạ tầng quốc gia: Hoàn thành trục xương sống kết nối kinh tế toàn diện đất nước',
+      publisher: 'Cổng Thông Tin Điện Tử Chính Phủ & TTXVN',
+      summary: 'Hoàn thành các mắt xích giao thông huyết mạch mở ra không gian phát triển mới cho các vùng kinh tế trọng điểm đất nước.',
+      claims: [
+        'Rút ngắn thời gian di chuyển toàn tuyến Bắc - Nam từ 36 giờ xuống dưới 18 giờ đường bộ.',
+        'Đạt 100% tiêu chuẩn kỹ thuật an toàn hiện đại, kết nối thông suốt các trung tâm kinh tế biển.',
+        'Tạo đòn bẩy giải ngân vốn đầu tư công và thu hút dòng vốn phát triển bền vững cho đất nước.'
+      ]
+    },
     {
       label: 'VnExpress: Pin Thể Rắn 1.000km',
       url: 'https://vnexpress.net/oto-dien-pin-the-ran-chay-1000km-moi-lan-sac-4792101.html',
@@ -70,13 +85,32 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
     setUrlInput(sample.url);
   };
 
-  const handleStartAnalysis = (e: React.FormEvent) => {
+  const handleStartAnalysis = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlInput.trim()) return;
 
     setIsAnalyzing(true);
     setAnalysisStep(1);
     setExtractedData(null);
+
+    // Call real FastAPI backend orchestrator asynchronously
+    let createdPlanId: string | null = null;
+    try {
+      const durSec = targetDuration === '30s' ? 30 : targetDuration === '60s' ? 60 : 90;
+      const apiRes = await OrchestratorApi.createPlan({
+        source_url: urlInput.trim(),
+        target_duration_seconds: durSec,
+        niche: storyTone,
+        aspect_ratio: '9:16',
+        auto_start: true
+      });
+      if (apiRes.success && apiRes.data?.plan_id) {
+        createdPlanId = apiRes.data.plan_id;
+        onPlanCreated?.(createdPlanId);
+      }
+    } catch (err) {
+      console.warn("Backend API sync warning:", err);
+    }
 
     // Simulate multi-step AI reasoning & extraction pipeline
     setTimeout(() => {
@@ -99,7 +133,7 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
       const article = isSample1 ? sampleArticles[0] : sampleArticles[1];
 
       const newGeneratedProject: VideoProject = {
-        id: `proj-url-${Date.now().toString().slice(-4)}`,
+        id: createdPlanId || `proj-url-${Date.now().toString().slice(-4)}`,
         title: article.title,
         niche: isSample1 ? 'Khoa Học & Xe Điện' : 'Y Tế & Công Nghệ AI',
         target_duration_seconds: targetDuration === '30s' ? 30 : targetDuration === '60s' ? 60 : 90,
@@ -316,6 +350,8 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
               onChange={(e) => setStoryTone(e.target.value as any)}
               className="w-full p-2.5 rounded-xl bg-[#0B1322] border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
             >
+              <option value="national">Thời Sự & Đất Nước (Hào Hùng & Trang Trọng)</option>
+              <option value="geopolitics">Địa Chính Trị & Quốc Tế (Chuyên Sâu & Khách Quan)</option>
               <option value="engaging">Hào Hứng Cuốn Hút (Viral Shorts)</option>
               <option value="news">Tin Tức Khách Quan (Báo Chí)</option>
               <option value="dramatic">Kịch Tính Tò Mò (Kể Chuyện)</option>

@@ -34,18 +34,44 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [showSafeZone, setShowSafeZone] = useState(true);
+  const [subtitleMode, setSubtitleMode] = useState<'single_word' | 'word_group' | 'full_paragraph'>('single_word');
   const [isRendering, setIsRendering] = useState(false);
   const [renderToast, setRenderToast] = useState<string | null>(null);
   const [voiceSpeed, setVoiceSpeed] = useState(1.1);
   const [selectedTemplate, setSelectedTemplate] = useState('News Explainer');
 
-  // Selected scene
-  const activeScene = project.scenes[selectedSceneIndex] || project.scenes[0];
+  // Selected scene with safe fallback
+  const activeScene = (project.scenes && project.scenes[selectedSceneIndex]) || project.scenes?.[0] || {
+    id: 'default',
+    order: 1,
+    text: '',
+    estimated_duration_seconds: 5,
+    visual_intent: ''
+  };
 
-  // Total duration
-  const totalDuration = project.scenes.reduce((acc, sc) => acc + sc.estimated_duration_seconds, 0);
+  // Total duration with safe minimum
+  const totalDuration = Math.max(1, (project.scenes || []).reduce((acc, sc) => acc + (sc.estimated_duration_seconds || 0), 0));
 
-  // Playback timer simulation
+  // Cumulative scene start times
+  const sceneStartTimes = (project.scenes || []).map((_, idx) =>
+    (project.scenes || []).slice(0, idx).reduce((acc, sc) => acc + (sc.estimated_duration_seconds || 0), 0)
+  );
+
+  // Synchronized seek handler ensuring active scene, timestamp, and word highlight stay in perfect lockstep
+  const handleSeek = (targetTime: number) => {
+    const clamped = Math.max(0, Math.min(targetTime, totalDuration));
+    setCurrentPlaybackTime(clamped);
+    let accumulated = 0;
+    for (let i = 0; i < (project.scenes || []).length; i++) {
+      accumulated += project.scenes[i].estimated_duration_seconds;
+      if (clamped < accumulated || i === project.scenes.length - 1) {
+        setSelectedSceneIndex(i);
+        break;
+      }
+    }
+  };
+
+  // Playback timer simulation (updated smoothly every 40ms = 25fps for fluid word sync)
   useEffect(() => {
     let interval: any;
     if (isPlaying) {
@@ -55,19 +81,19 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             setIsPlaying(false);
             return 0;
           }
-          const next = prev + 0.5;
+          const next = prev + 0.04;
           // Auto switch active scene based on playback
           let accumulated = 0;
-          for (let i = 0; i < project.scenes.length; i++) {
+          for (let i = 0; i < (project.scenes || []).length; i++) {
             accumulated += project.scenes[i].estimated_duration_seconds;
-            if (next <= accumulated) {
+            if (next < accumulated || i === (project.scenes || []).length - 1) {
               setSelectedSceneIndex(i);
               break;
             }
           }
           return next;
         });
-      }, 500);
+      }, 40);
     }
     return () => clearInterval(interval);
   }, [isPlaying, totalDuration, project.scenes]);
@@ -104,12 +130,22 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     }, 2500);
   };
 
-  // Split text for karaoke simulation
-  const words = activeScene.text.split(' ');
-  const activeWordIndex = Math.min(
-    Math.floor((currentPlaybackTime % activeScene.estimated_duration_seconds) / (activeScene.estimated_duration_seconds / words.length)),
-    words.length - 1
-  );
+  // Accurate time within active scene
+  const activeSceneStart = sceneStartTimes[selectedSceneIndex] ?? 0;
+  const timeInActiveScene = Math.max(0, currentPlaybackTime - activeSceneStart);
+  const activeSceneDuration = Math.max(0.5, activeScene.estimated_duration_seconds || 5);
+
+  // Split words cleanly
+  const words = (activeScene?.text || '').trim().split(/\s+/).filter(Boolean);
+  const wordProgress = Math.min(1, Math.max(0, timeInActiveScene / activeSceneDuration));
+  const activeWordIndex = words.length > 0
+    ? Math.min(Math.floor(wordProgress * words.length), words.length - 1)
+    : 0;
+  const currentWord = words[activeWordIndex] || words[0] || '';
+
+  // Compact 3-word window for word_group mode
+  const groupStart = Math.max(0, Math.floor(activeWordIndex / 3) * 3);
+  const groupWords = words.slice(groupStart, groupStart + 3);
 
   return (
     <div className="space-y-4">
@@ -281,7 +317,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             CENTER PANE: 9:16 Vertical Phone Preview Frame (4 Cols)
            ======================================================== */}
         <div className="lg:col-span-4 p-5 rounded-3xl glass-panel flex flex-col items-center">
-          <div className="w-full flex items-center justify-between mb-3 text-xs text-slate-400">
+          <div className="w-full flex items-center justify-between mb-2 text-xs text-slate-400">
             <span className="font-bold text-white flex items-center gap-1.5">
               <Eye className="w-4 h-4 text-cyan-400" /> Khung Xem Trước (9:16)
             </span>
@@ -293,6 +329,46 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             >
               {showSafeZone ? 'Ẩn Safe-Zone' : 'Hiện Safe-Zone TikTok'}
             </button>
+          </div>
+
+          {/* Subtitle Mode Selector Bar */}
+          <div className="w-full mb-3 p-1.5 rounded-2xl bg-[#0B1322] border border-white/10 flex items-center justify-between gap-1 text-[11px]">
+            <span className="text-slate-400 font-semibold px-2">Kiểu Sub:</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setSubtitleMode('single_word')}
+                className={`px-2.5 py-1 rounded-xl font-bold transition flex items-center gap-1 ${
+                  subtitleMode === 'single_word'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-md shadow-amber-500/20'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+                title="Nhảy từng 1 chữ to ở giữa màn hình chuẩn Shorts/TikTok"
+              >
+                <span>⚡ 1 Từ (Shorts)</span>
+              </button>
+              <button
+                onClick={() => setSubtitleMode('word_group')}
+                className={`px-2.5 py-1 rounded-xl font-semibold transition ${
+                  subtitleMode === 'word_group'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+                title="Hiển thị cụm 3 chữ ngắn"
+              >
+                <span>Cụm 3 chữ</span>
+              </button>
+              <button
+                onClick={() => setSubtitleMode('full_paragraph')}
+                className={`px-2 py-1 rounded-xl font-semibold transition ${
+                  subtitleMode === 'full_paragraph'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+                title="Hiển thị cả đoạn văn kiểu karaoke"
+              >
+                <span>Cả đoạn</span>
+              </button>
+            </div>
           </div>
 
           {/* 9:16 Modern Phone Frame with Dynamic Island */}
@@ -337,27 +413,63 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
               </div>
             )}
 
-            {/* Karaoke Dynamic Subtitle Display (Positioned above bottom safe area) */}
-            <div className="relative z-20 px-4 pb-20 text-center">
-              <div className="inline-block bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-2xl">
-                <p className="text-xs sm:text-sm font-bold text-white tracking-wide leading-relaxed">
-                  {words.map((word, wIdx) => {
-                    const isWordActive = wIdx === activeWordIndex;
-                    return (
-                      <span
-                        key={wIdx}
-                        className={`transition-all duration-150 inline-block mx-0.5 ${
-                          isWordActive 
-                            ? 'text-amber-400 scale-110 font-extrabold underline decoration-amber-400 underline-offset-4' 
-                            : 'text-white'
-                        }`}
-                      >
-                        {word}
-                      </span>
-                    );
-                  })}
-                </p>
-              </div>
+            {/* Dynamic TikTok/Shorts Subtitle Display - Exactly at bottom safe area above @TechBytesVN */}
+            <div className="absolute bottom-[92px] sm:bottom-[100px] inset-x-0 z-20 px-3 text-center flex flex-col items-center pointer-events-none">
+              {subtitleMode === 'single_word' && (
+                <div className="flex items-center justify-center">
+                  <span
+                    key={`${selectedSceneIndex}-${activeWordIndex}`}
+                    className="animate-pop inline-block text-xl sm:text-2xl font-black uppercase tracking-wider text-yellow-300 drop-shadow-[0_4px_8px_rgba(0,0,0,1)] [text-shadow:_2px_2px_0_#000,_-2px_-2px_0_#000,_2px_-2px_0_#000,_-2px_2px_0_#000,_0_2px_8px_rgba(0,0,0,1)] px-3.5 py-1 rounded-xl bg-black/75 backdrop-blur-md border border-yellow-400/40 shadow-2xl"
+                  >
+                    {currentWord || words[0] || ''}
+                  </span>
+                </div>
+              )}
+
+              {subtitleMode === 'word_group' && (
+                <div className="px-3.5 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/10 shadow-2xl max-w-[260px]">
+                  <p className="text-sm sm:text-base font-extrabold tracking-wide leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+                    {groupWords.map((word, gIdx) => {
+                      const actualIdx = groupStart + gIdx;
+                      const isWordActive = actualIdx === activeWordIndex;
+                      return (
+                        <span
+                          key={actualIdx}
+                          className={`inline-block mx-1 transition-all duration-75 ${
+                            isWordActive
+                              ? 'text-yellow-300 scale-110 font-black underline decoration-yellow-400 underline-offset-4'
+                              : 'text-white/90'
+                          }`}
+                        >
+                          {word}
+                        </span>
+                      );
+                    })}
+                  </p>
+                </div>
+              )}
+
+              {subtitleMode === 'full_paragraph' && (
+                <div className="px-3 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 shadow-2xl max-w-[260px]">
+                  <p className="text-xs sm:text-sm font-bold tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,1)] leading-relaxed">
+                    {words.map((word, wIdx) => {
+                      const isWordActive = wIdx === activeWordIndex;
+                      return (
+                        <span
+                          key={wIdx}
+                          className={`transition-all duration-75 inline-block mx-0.5 ${
+                            isWordActive 
+                              ? 'text-yellow-300 scale-110 font-black underline decoration-yellow-400 underline-offset-2' 
+                              : 'text-white/80'
+                          }`}
+                        >
+                          {word}
+                        </span>
+                      );
+                    })}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -375,7 +487,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
                 const rect = e.currentTarget.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
                 const ratio = clickX / rect.width;
-                setCurrentPlaybackTime(ratio * totalDuration);
+                handleSeek(ratio * totalDuration);
               }}
             >
               <div 
@@ -387,7 +499,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             {/* Player Buttons */}
             <div className="flex items-center justify-center space-x-3 pt-2">
               <button
-                onClick={() => setCurrentPlaybackTime(0)}
+                onClick={() => handleSeek(0)}
                 className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 transition"
                 title="Quay lại đầu"
               >

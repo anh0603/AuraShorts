@@ -17,7 +17,7 @@ export const INITIAL_PROJECT: VideoProject = {
       id: 'scene-001',
       order: 1,
       text: 'Đây là con chip 2 nanomet mỏng hơn cả sợi tóc, nhưng mang sức mạnh tính toán thay đổi toàn bộ nền kinh tế thế giới.',
-      estimated_duration_seconds: 5,
+      estimated_duration_seconds: 7.5,
       search_keywords: ['semiconductor wafer 2nm', 'silicon microchip macro'],
       visual_intent: 'Cận cảnh đĩa silicon wafer lấp lánh phản chiếu ánh sáng trong phòng sạch công nghệ cao.',
       layout_type: 'fullscreen',
@@ -37,7 +37,7 @@ export const INITIAL_PROJECT: VideoProject = {
       id: 'scene-002',
       order: 2,
       text: 'Công nghệ bóng bán dẫn Gate-All-Around cho phép nhồi nhét hơn 50 tỷ bóng bán dẫn vào diện tích chỉ bằng một chiếc móng tay.',
-      estimated_duration_seconds: 6,
+      estimated_duration_seconds: 8.0,
       search_keywords: ['GAA transistor architecture diagram', 'microscopic electronic circuit'],
       visual_intent: 'Mô hình đồ họa 3D kiến trúc bóng bán dẫn GAA và dòng electron di chuyển.',
       layout_type: 'split_screen',
@@ -57,7 +57,7 @@ export const INITIAL_PROJECT: VideoProject = {
       id: 'scene-003',
       order: 3,
       text: 'Cuộc đua giữa các ông lớn không chỉ là công nghệ sản xuất, mà là cuộc chiến giành giật cỗ máy quang khắc EUV trị giá 350 triệu USD.',
-      estimated_duration_seconds: 7,
+      estimated_duration_seconds: 7.5,
       search_keywords: ['ASML High NA EUV machine factory'],
       visual_intent: 'Cỗ máy quang khắc High-NA EUV khổng lồ đang hoạt động trong nhà máy.',
       layout_type: 'fullscreen',
@@ -255,6 +255,42 @@ export const MOCK_TRENDS: TrendTopic[] = [
     verification_status: 'UNVERIFIED',
     primary_publisher: 'Nature Optics Pre-print',
     published_at: 'Hôm nay'
+  },
+  {
+    id: 'tr-04',
+    niche_id: 'national',
+    title: 'Đột phá hạ tầng quốc gia: Thông xe toàn tuyến cao tốc Bắc - Nam và xúc tiến đường sắt tốc độ cao',
+    summary: 'Chính phủ chỉ đạo tập trung mọi nguồn lực hoàn thành mạng lưới hạ tầng giao thông huyết mạch kết nối liên vùng, tạo động lực phát triển kinh tế đất nước.',
+    trend_score: 98,
+    confidence: 0.98,
+    sources_count: 6,
+    verification_status: 'SUPPORTED',
+    primary_publisher: 'Cổng Thông Tin Điện Tử Chính Phủ & TTXVN',
+    published_at: '30 phút trước'
+  },
+  {
+    id: 'tr-05',
+    niche_id: 'geopolitics',
+    title: 'Hội nghị thượng đỉnh ngoại giao đa phương: Định vị chiến lược kinh tế và chuỗi cung ứng toàn cầu',
+    summary: 'Việt Nam ký kết thỏa thuận đối tác chiến lược toàn diện mới, nâng cao vị thế ngoại giao và uy tín quốc gia trên trường quốc tế.',
+    trend_score: 93,
+    confidence: 0.95,
+    sources_count: 5,
+    verification_status: 'SUPPORTED',
+    primary_publisher: 'Báo Quốc Tế & Báo Nhân Dân',
+    published_at: '1 giờ trước'
+  },
+  {
+    id: 'tr-06',
+    niche_id: 'history',
+    title: 'Hồ sơ lịch sử: Cột mốc hào hùng của các công trình thế kỷ kiến thiết đất nước',
+    summary: 'Phục dựng tư liệu lịch sử quý giá về ý chí kiên cường vượt khó trong các chiến dịch mở đường Trường Sơn và công cuộc tái thiết sau chiến tranh.',
+    trend_score: 87,
+    confidence: 0.92,
+    sources_count: 4,
+    verification_status: 'SUPPORTED',
+    primary_publisher: 'Bảo Tàng Lịch Sử Quốc Gia & Đài THVN',
+    published_at: 'Hôm qua'
   }
 ];
 

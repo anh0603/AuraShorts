@@ -1,6 +1,4 @@
-// Domain Types matching PROJECT.md Master Specification & docs/DATA_MODEL.md
-
-export type NicheId = 'tech' | 'finance' | 'science' | 'history';
+export type NicheId = 'tech' | 'finance' | 'science' | 'history' | 'national' | 'geopolitics';
 
 export type ClaimVerificationStatus = 
   | 'UNVERIFIED' 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   GitBranch, 
   CheckCircle2, 
@@ -9,147 +9,193 @@ import {
   Activity, 
   Zap,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  AlertCircle,
+  RefreshCw,
+  Clock,
+  Ban
 } from 'lucide-react';
-import type { OrchestrationTaskItem } from '../../types';
+import { OrchestratorApi, type ApiPlanDetail, type ApiTaskItem } from '../../services/api';
 
 interface DagVisualizerProps {
   planId?: string;
 }
 
 export const DagVisualizer: React.FC<DagVisualizerProps> = ({
-  planId = 'plan-7f28a9b1'
+  planId: initialPlanId = 'plan-default'
 }) => {
-  const [isPaused, setIsPaused] = useState(false);
+  const [currentPlanId, setCurrentPlanId] = useState(initialPlanId);
+  const [plan, setPlan] = useState<ApiPlanDetail | null>(null);
+  const [tasks, setTasks] = useState<ApiTaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [showGateDetails, setShowGateDetails] = useState(false);
-  const [tasks, setTasks] = useState<OrchestrationTaskItem[]>([
-    {
-      id: 'task-1',
-      name: '1. Crawl & Làm Sạch Bài Báo',
-      type: 'CRAWL_SOURCE',
-      status: 'completed',
-      priority: 1,
-      dependencies: [],
-      duration_ms: 1200,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-2',
-      name: '2. Lọc 3 Luận Điểm Cốt Lõi',
-      type: 'EXTRACT_FACTS',
-      status: 'completed',
-      priority: 2,
-      dependencies: ['task-1'],
-      duration_ms: 2400,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-3',
-      name: '3. Viết Kịch Bản Tiếng Việt (9:16)',
-      type: 'GENERATE_SCRIPT',
-      status: 'completed',
-      priority: 3,
-      dependencies: ['task-2'],
-      duration_ms: 3800,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-4a',
-      name: '4A. Giọng Đọc Neural TTS (Song song A)',
-      type: 'TTS_AUDIO',
-      status: 'completed',
-      priority: 4,
-      dependencies: ['task-3'],
-      duration_ms: 4100,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-4b',
-      name: '4B. Tìm & Xếp Hạng Tư Liệu (Song song B)',
-      type: 'SEARCH_MEDIA',
-      status: 'completed',
-      priority: 4,
-      dependencies: ['task-3'],
-      duration_ms: 2900,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-5a',
-      name: '5A. Đồng Bộ Từ Khóa Karaoke',
-      type: 'ALIGN_AUDIO',
-      status: 'completed',
-      priority: 5,
-      dependencies: ['task-4a'],
-      duration_ms: 1800,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-5b',
-      name: '5B. Xác Minh Bản Quyền Tư Liệu',
-      type: 'VERIFY_RIGHTS',
-      status: 'completed',
-      priority: 5,
-      dependencies: ['task-4b'],
-      duration_ms: 950,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-6',
-      name: '6. Hội Tụ & Render Video FFmpeg',
-      type: 'RENDER_FFMPEG',
-      status: 'completed',
-      priority: 6,
-      dependencies: ['task-5a', 'task-5b'],
-      duration_ms: 18600,
-      attempt_number: 1,
-      quality_gate_passed: true
-    },
-    {
-      id: 'task-7',
-      name: '7. Quality Gate (ffprobe 1080x1920)',
-      type: 'QUALITY_GATE_CHECK',
-      status: 'completed',
-      priority: 7,
-      dependencies: ['task-6'],
-      duration_ms: 620,
-      attempt_number: 1,
-      quality_gate_passed: true
+
+  // Fetch plan from backend API
+  const fetchPlanData = useCallback(async (id: string) => {
+    try {
+      const res = await OrchestratorApi.getPlan(id);
+      if (res.success && res.data) {
+        setPlan(res.data);
+        setTasks(res.data.tasks || []);
+        setError(null);
+        setBackendOnline(true);
+      } else {
+        // If plan not found on server, try creating a default one or list existing
+        const listRes = await OrchestratorApi.listPlans();
+        if (listRes.success && listRes.data && listRes.data.length > 0) {
+          const firstPlanId = listRes.data[0].id;
+          setCurrentPlanId(firstPlanId);
+        } else {
+          // If no plans exist yet, initialize an autonomous demo plan
+          const createRes = await OrchestratorApi.createPlan({
+            source_url: "https://vnexpress.net/pin-the-ran-oto-dien-1000km.html",
+            target_duration_seconds: 60,
+            niche: "tech",
+            aspect_ratio: "9:16",
+            auto_start: true
+          });
+          if (createRes.success && createRes.data) {
+            setPlan(createRes.data);
+            setTasks(createRes.data.tasks || []);
+            setCurrentPlanId(createRes.data.plan_id);
+            setBackendOnline(true);
+          }
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || "Không thể kết nối đến backend API.");
+      setBackendOnline(false);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }, []);
+
+  // Check health and initial load
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAndLoad() {
+      setLoading(true);
+      const health = await OrchestratorApi.getHealth();
+      if (!isMounted) return;
+
+      if (health.success) {
+        setBackendOnline(true);
+        await fetchPlanData(currentPlanId);
+      } else {
+        setBackendOnline(false);
+        setError("Backend API offline (http://localhost:8000). Đang chờ kết nối...");
+        setLoading(false);
+      }
+    }
+
+    checkAndLoad();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentPlanId, fetchPlanData]);
+
+  // Polling loop while plan is active
+  useEffect(() => {
+    if (!backendOnline || !plan) return;
+    const isPlanActive = plan.status === 'running' || plan.status === 'pending' || plan.status === 'retrying';
+    if (!isPlanActive) return;
+
+    const interval = setInterval(() => {
+      fetchPlanData(currentPlanId);
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [backendOnline, plan, currentPlanId, fetchPlanData]);
+
+  // Handlers for Plan Controls
+  const handleTogglePause = async () => {
+    if (!plan) return;
+    setIsActionLoading(true);
+    try {
+      if (plan.status === 'paused') {
+        const res = await OrchestratorApi.resumePlan(plan.plan_id);
+        if (res.success) {
+          setPlan(prev => prev ? { ...prev, status: 'running' } : null);
+        }
+      } else {
+        const res = await OrchestratorApi.pausePlan(plan.plan_id);
+        if (res.success) {
+          setPlan(prev => prev ? { ...prev, status: 'paused' } : null);
+        }
+      }
+      await fetchPlanData(plan.plan_id);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleRetryTask = async (taskId: string) => {
+    setIsActionLoading(true);
+    try {
+      const res = await OrchestratorApi.retryTask(taskId);
+      if (res.success) {
+        await fetchPlanData(currentPlanId);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Helper for status badge
+  const renderStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />;
+      case 'running':
+        return <Activity className="w-4 h-4 text-cyan-400 animate-pulse shrink-0" />;
+      case 'queued':
+        return <Clock className="w-4 h-4 text-amber-400 shrink-0" />;
+      case 'blocked':
+        return <Ban className="w-4 h-4 text-slate-500 shrink-0" />;
+      case 'failed':
+        return <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />;
+      default:
+        return <Clock className="w-4 h-4 text-slate-500 shrink-0" />;
+    }
+  };
 
   const completedCount = tasks.filter(t => t.status === 'completed').length;
-  const progressPercent = Math.round((completedCount / tasks.length) * 100);
-
-  const handleTogglePause = () => {
-    setIsPaused(!isPaused);
-  };
-
-  const handleRetryTask = (taskId: string) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === taskId) {
-        return { ...t, status: 'completed', attempt_number: t.attempt_number + 1 };
-      }
-      return t;
-    }));
-  };
+  const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
+  const isPaused = plan?.status === 'paused';
 
   return (
-    <div className="p-6 rounded-3xl glass-panel space-y-5 border border-indigo-500/20 shadow-xl">
+    <div className="p-6 rounded-3xl glass-panel space-y-5 border border-indigo-500/20 shadow-xl relative overflow-hidden">
       {/* Top Header & Execution Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
-              DAG ORCHESTRATOR ENGINE
+              DAG ORCHESTRATOR ENGINE v2.0
             </span>
-            <span className="text-xs text-slate-400 font-mono">Plan ID: {planId}</span>
+            <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+              Plan ID: {plan ? plan.plan_id : currentPlanId}
+              {loading && <RefreshCw className="w-3 h-3 text-cyan-400 animate-spin ml-1" />}
+            </span>
+            {backendOnline ? (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                API Live
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                Offline
+              </span>
+            )}
           </div>
           <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2 mt-1">
             <GitBranch className="w-4 h-4 text-indigo-400" />
@@ -164,7 +210,8 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
         <div className="flex items-center space-x-2 shrink-0">
           <button
             onClick={handleTogglePause}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+            disabled={isActionLoading || !backendOnline}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50 ${
               isPaused 
                 ? 'bg-emerald-600 hover:bg-emerald-500 text-white' 
                 : 'bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/40'
@@ -175,9 +222,17 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
           </button>
 
           <button
-            onClick={() => handleRetryTask('task-6')}
-            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition"
-            title="Thử lại bước render"
+            onClick={() => {
+              const failedTask = tasks.find(t => t.status === 'failed' || t.status === 'blocked');
+              if (failedTask) {
+                handleRetryTask(failedTask.id);
+              } else if (tasks.length > 0) {
+                handleRetryTask(tasks[tasks.length - 1].id);
+              }
+            }}
+            disabled={isActionLoading || !backendOnline}
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition disabled:opacity-50"
+            title="Thử lại bước lỗi hoặc bước render"
           >
             <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
             <span>Thử Lại Bước</span>
@@ -185,12 +240,34 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
         </div>
       </div>
 
+      {/* Backend Connection Warning Banner if offline */}
+      {backendOnline === false && (
+        <div className="p-3 rounded-2xl bg-rose-950/40 border border-rose-500/30 flex items-center justify-between text-xs text-rose-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{error || "Mất kết nối backend server (http://localhost:8000). Vui lòng đảm bảo FastAPI backend đang chạy."}</span>
+          </div>
+          <button
+            onClick={() => fetchPlanData(currentPlanId)}
+            className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-[11px] font-semibold border border-rose-500/40 flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>Kết nối lại</span>
+          </button>
+        </div>
+      )}
+
       {/* Progress Bar & Status */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold text-white flex items-center gap-2">
             <Activity className="w-3.5 h-3.5 text-cyan-400" />
             Tiến độ hoàn thành DAG: {completedCount}/{tasks.length} nhiệm vụ
+            {plan?.status && (
+              <span className="uppercase text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono">
+                {plan.status}
+              </span>
+            )}
           </span>
           <span className="font-mono text-cyan-400 font-bold">{progressPercent}%</span>
         </div>
@@ -211,12 +288,23 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
           <div className="p-3.5 rounded-2xl bg-[#0B1322]/80 border border-white/5 space-y-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Giai đoạn 1: Nạp Dữ Liệu</span>
             {tasks.slice(0, 3).map(t => (
-              <div key={t.id} className="p-2.5 rounded-xl bg-[#1E293B]/70 border border-emerald-500/20 flex items-center justify-between">
+              <div 
+                key={t.id} 
+                className={`p-2.5 rounded-xl border flex items-center justify-between transition ${
+                  t.status === 'completed' 
+                    ? 'bg-[#1E293B]/70 border-emerald-500/20' 
+                    : t.status === 'running'
+                    ? 'bg-indigo-950/50 border-cyan-500/40 shadow-sm shadow-cyan-500/20'
+                    : 'bg-[#1E293B]/40 border-white/5 opacity-80'
+                }`}
+              >
                 <div>
-                  <div className="font-semibold text-white">{t.name}</div>
-                  <div className="text-[10px] text-slate-400 font-mono">{t.duration_ms}ms • Attempt #{t.attempt_number}</div>
+                  <div className="font-semibold text-white">{t.task_name}</div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {t.duration_ms ? `${t.duration_ms}ms` : 'Chờ thực thi'} • Lần thử #{t.current_attempt}
+                  </div>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                {renderStatusIcon(t.status)}
               </div>
             ))}
           </div>
@@ -227,12 +315,23 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
               <Zap className="w-3 h-3 text-cyan-400" /> Giai đoạn 2: Xử Lý Song Song
             </span>
             {tasks.slice(3, 7).map(t => (
-              <div key={t.id} className="p-2.5 rounded-xl bg-[#1E293B]/70 border border-emerald-500/20 flex items-center justify-between">
+              <div 
+                key={t.id} 
+                className={`p-2.5 rounded-xl border flex items-center justify-between transition ${
+                  t.status === 'completed' 
+                    ? 'bg-[#1E293B]/70 border-emerald-500/20' 
+                    : t.status === 'running'
+                    ? 'bg-indigo-950/50 border-cyan-500/40 shadow-sm shadow-cyan-500/20'
+                    : 'bg-[#1E293B]/40 border-white/5 opacity-80'
+                }`}
+              >
                 <div>
-                  <div className="font-semibold text-white">{t.name}</div>
-                  <div className="text-[10px] text-slate-400 font-mono">{t.duration_ms}ms • Dependency OK</div>
+                  <div className="font-semibold text-white">{t.task_name}</div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {t.duration_ms ? `${t.duration_ms}ms` : 'Phụ thuộc OK'} • Lần thử #{t.current_attempt}
+                  </div>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                {renderStatusIcon(t.status)}
               </div>
             ))}
           </div>
@@ -241,12 +340,23 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
           <div className="p-3.5 rounded-2xl bg-[#0B1322]/80 border border-cyan-500/20 space-y-2">
             <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider block">Giai đoạn 3: Hội Tụ & Kiểm Định</span>
             {tasks.slice(7).map(t => (
-              <div key={t.id} className="p-2.5 rounded-xl bg-[#1E293B]/70 border border-emerald-500/20 flex items-center justify-between">
+              <div 
+                key={t.id} 
+                className={`p-2.5 rounded-xl border flex items-center justify-between transition ${
+                  t.status === 'completed' 
+                    ? 'bg-[#1E293B]/70 border-emerald-500/20' 
+                    : t.status === 'running'
+                    ? 'bg-indigo-950/50 border-cyan-500/40 shadow-sm shadow-cyan-500/20'
+                    : 'bg-[#1E293B]/40 border-white/5 opacity-80'
+                }`}
+              >
                 <div>
-                  <div className="font-semibold text-white">{t.name}</div>
-                  <div className="text-[10px] text-slate-400 font-mono">{t.duration_ms}ms • ffprobe check</div>
+                  <div className="font-semibold text-white">{t.task_name}</div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {t.duration_ms ? `${t.duration_ms}ms` : 'ffprobe verify'} • Lần thử #{t.current_attempt}
+                  </div>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                {renderStatusIcon(t.status)}
               </div>
             ))}
 
@@ -286,7 +396,7 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
             </div>
             <div className="p-2 rounded-lg bg-black/40 border border-white/5">
               <span className="text-slate-400 block">Độ dài video:</span>
-              <span className="font-mono text-emerald-400 font-bold">58.2s (Hợp lệ) ✓</span>
+              <span className="font-mono text-emerald-400 font-bold">52.4s (Hợp lệ) ✓</span>
             </div>
           </div>
         </div>

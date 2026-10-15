@@ -15,6 +15,7 @@ export function App() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [project, setProject] = useState<VideoProject>(INITIAL_PROJECT);
   const [providers, setProviders] = useState<AiProvider[]>(MOCK_PROVIDERS);
+  const [activePlanId, setActivePlanId] = useState<string | null>(null);
 
   const handleProjectGeneratedFromUrl = (newProject: VideoProject) => {
     setProject(newProject);
@@ -26,7 +27,17 @@ export function App() {
     const newProj: VideoProject = {
       id: `proj-${topic.id}-${Date.now().toString().slice(-4)}`,
       title: topic.title,
-      niche: topic.niche_id === 'tech' ? 'Công nghệ & Bán dẫn' : 'Tài chính & Kinh tế',
+      niche: topic.niche_id === 'national'
+        ? 'Thời Sự & Đất Nước'
+        : topic.niche_id === 'geopolitics'
+        ? 'Địa Chính Trị & Quốc Tế'
+        : topic.niche_id === 'history'
+        ? 'Lịch Sử Dân Tộc'
+        : topic.niche_id === 'tech'
+        ? 'Công Nghệ & Bán Dẫn'
+        : topic.niche_id === 'science'
+        ? 'Khoa Học Đột Phá'
+        : 'Tài Chính & Kinh Tế',
       target_duration_seconds: 60,
       status: 'WAITING_FOR_APPROVAL',
       current_stage: 'STORYBOARD_READY',
@@ -83,6 +94,7 @@ export function App() {
           {currentTab === 'dashboard' && (
             <DashboardView
               project={project}
+              activePlanId={activePlanId || undefined}
               onOpenStudio={() => setCurrentTab('studio')}
               onOpenProviders={() => setCurrentTab('ai-providers')}
               onOpenTrends={() => setCurrentTab('trends')}
@@ -94,6 +106,7 @@ export function App() {
           {currentTab === 'url-to-video' && (
             <UrlToVideoView
               onProjectGenerated={handleProjectGeneratedFromUrl}
+              onPlanCreated={(planId) => setActivePlanId(planId)}
             />
           )}
 

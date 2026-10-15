@@ -16,6 +16,9 @@ storage/media/*
 !storage/media/.gitkeep
 storage/artifacts/*
 !storage/artifacts/.gitkeep
+storage/*.db
+storage/*.json
+backend/storage/
 *.log
 .DS_Store
 Thumbs.db
