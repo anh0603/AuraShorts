@@ -361,11 +361,14 @@ class TaskHandlers:
                 tpl = scene_templates[i % len(scene_templates)]
                 scene_type = "hook" if i == 0 else ("cta" if i == num_scenes - 1 else tpl[0])
                 text = tpl[1] if i < num_scenes - 1 else "Bấm theo dõi kênh ngay hôm nay để đón xem những video triệu view tiếp theo!"
+                words = max(1, len(text.strip().split()))
+                # Natural speech pacing: ~3.0 words/second + 0.5s pause between sentences
+                scene_dur = round(max(3.2, (words / 3.0) + 0.5), 1)
                 generated_scenes.append({
                     "scene_id": i + 1,
                     "type": scene_type,
                     "text": text,
-                    "estimated_duration_seconds": 4.0,
+                    "estimated_duration_seconds": scene_dur,
                     "visual_prompt": tpl[2]
                 })
 
@@ -407,31 +410,35 @@ class TaskHandlers:
 
         audio_file_path = ARTIFACTS_DIR / "voiceover_neural.mp3"
 
+        total_words = len(total_text.split())
+        expected_sec = round(max(8.0, (total_words / 3.0) + len(scenes) * 0.4), 1)
+        tts_timeout = max(35.0, expected_sec * 1.5)
+
         # Call real edge_tts
         tts_success = False
         try:
             import edge_tts
             voice = input_payload.get("voice_id", "vi-VN-HoaiMyNeural")
             tts = edge_tts.Communicate(total_text, voice)
-            await asyncio.wait_for(tts.save(str(audio_file_path)), timeout=12.0)
+            await asyncio.wait_for(tts.save(str(audio_file_path)), timeout=tts_timeout)
             if audio_file_path.exists() and audio_file_path.stat().st_size > 1000:
                 tts_success = True
         except Exception:
             tts_success = False
 
         if not tts_success:
-            # Fallback using ffmpeg speech-like synthesizer if edge-tts network is unreachable
+            # Fallback using ffmpeg with exact expected duration
             cmd = [
                 'ffmpeg', '-y', '-f', 'lavfi',
-                '-i', 'sine=frequency=800:duration=15',
+                '-i', f'sine=frequency=800:duration={expected_sec}',
                 '-c:a', 'libmp3lame', '-b:a', '64k',
                 str(audio_file_path)
             ]
             subprocess.run(cmd, capture_output=True)
 
         # Inspect real audio file via ffprobe
-        duration_seconds = 15.0
-        duration_ms = 15000
+        duration_seconds = expected_sec
+        duration_ms = int(expected_sec * 1000)
         try:
             probe_cmd = [
                 'ffprobe', '-v', 'quiet', '-print_format', 'json',
@@ -440,7 +447,7 @@ class TaskHandlers:
             probe_res = subprocess.run(probe_cmd, capture_output=True, text=True)
             if probe_res.returncode == 0:
                 probe_json = json.loads(probe_res.stdout)
-                duration_seconds = float(probe_json.get("format", {}).get("duration", 15.0))
+                duration_seconds = float(probe_json.get("format", {}).get("duration", expected_sec))
                 duration_ms = int(duration_seconds * 1000)
         except Exception:
             pass
@@ -453,7 +460,8 @@ class TaskHandlers:
             "channels": 1,
             "format": "mp3",
             "loudness_lufs": -14.2,
-            "voice_id": input_payload.get("voice_id", "vi-VN-HoaiMyNeural")
+            "voice_id": input_payload.get("voice_id", "vi-VN-HoaiMyNeural"),
+            "scenes": scenes
         }
 
         # Quality Gate validation
@@ -635,7 +643,7 @@ class TaskHandlers:
                 "width": 1080,
                 "height": 1920,
                 "url": str(img_path),
-                "duration_seconds": 4.0,
+                "duration_seconds": s.get("estimated_duration_seconds", round(max(3.5, len(s.get("text", "").split()) / 3.0 + 0.5), 1)),
                 "license": media_license,
                 "source_domain": source_domain
             })
@@ -643,7 +651,8 @@ class TaskHandlers:
         return {
             "media_count": len(media_items),
             "media_items": media_items,
-            "aspect_ratio_match": True
+            "aspect_ratio_match": True,
+            "scenes": scenes
         }
 
     @staticmethod
@@ -657,6 +666,14 @@ class TaskHandlers:
         duration_ms = upstream_data.get("duration_ms", 15000)
         scenes = upstream_data.get("scenes", [])
         if not scenes:
+            script_file = ARTIFACTS_DIR / "script_916.json"
+            if script_file.exists():
+                try:
+                    with open(script_file, "r", encoding="utf-8") as sf:
+                        scenes = json.load(sf).get("scenes", [])
+                except Exception:
+                    pass
+        if not scenes:
             scenes = [
                 {"scene_id": 1, "text": "AuraShorts OS Video Tu Dong"},
                 {"scene_id": 2, "text": "San Xuat Tu Dong Chat Luong Cao"}
@@ -664,18 +681,20 @@ class TaskHandlers:
 
         ass_path = ARTIFACTS_DIR / "subtitles_karaoke.ass"
 
-        # Distribute segments across duration_ms
-        total_chars = sum(len(s.get("text", "")) for s in scenes) or 1
+        # Distribute segments across duration_ms matching each scene's spoken script length
+        total_words = sum(max(1, len(s.get("text", "").split())) for s in scenes) or 1
         segments = []
-        current_ms = 400  # 0.4s initial padding
+        current_ms = 300  # 0.3s speech lead-in
 
         ass_events = []
-        for s in scenes:
+        for i, s in enumerate(scenes):
             raw_text = s.get("text", "").strip()
-            share = len(raw_text) / total_chars
-            seg_duration = int(share * (duration_ms - 800))
-            seg_duration = max(seg_duration, 1500)
-            end_ms = min(current_ms + seg_duration, duration_ms)
+            w = max(1, len(raw_text.split()))
+            if i == len(scenes) - 1:
+                end_ms = duration_ms
+            else:
+                seg_duration = int((w / total_words) * (duration_ms - 400))
+                end_ms = min(current_ms + seg_duration, duration_ms)
 
             segments.append({
                 "start_ms": current_ms,
@@ -793,16 +812,44 @@ class TaskHandlers:
                 img.save(str(default_scene))
             scene_images = [default_scene]
 
-        # Multi-scene slideshow with exact duration per scene matching audio
+        # Retrieve scenes to calculate proportional duration based on spoken script
+        scenes = upstream_data.get("scenes", [])
+        if not scenes:
+            script_file = ARTIFACTS_DIR / "script_916.json"
+            if script_file.exists():
+                try:
+                    with open(script_file, "r", encoding="utf-8") as sf:
+                        scenes = json.load(sf).get("scenes", [])
+                except Exception:
+                    pass
+
+        # Calculate exact duration for each scene proportional to its spoken text length
+        total_words = sum(max(1, len(s.get("text", "").split())) for s in scenes) or 1
+        scene_durations = []
+        if scenes and len(scenes) == len(scene_images):
+            running_dur = 0.0
+            for i, s in enumerate(scenes):
+                w = max(1, len(s.get("text", "").split()))
+                if i == len(scenes) - 1:
+                    dur = max(1.0, round(duration_sec - running_dur, 3))
+                else:
+                    dur = round(duration_sec * (w / total_words), 3)
+                    running_dur += dur
+                scene_durations.append(dur)
+        else:
+            equal_dur = round(duration_sec / len(scene_images), 3)
+            scene_durations = [equal_dur] * len(scene_images)
+
+        # Write ffmpeg concat file with exact script-matching scene durations
         concat_path = ARTIFACTS_DIR / "ffmpeg_concat.txt"
-        per_scene_dur = round(duration_sec / len(scene_images), 3)
         with open(concat_path, "w", encoding="utf-8") as f:
-            for img_p in scene_images:
+            for idx, img_p in enumerate(scene_images):
+                dur = scene_durations[idx]
                 f.write(f"file '{img_p.resolve().as_posix()}'\n")
-                f.write(f"duration {per_scene_dur}\n")
+                f.write(f"duration {dur}\n")
             # Concat demuxer requirement: repeat last image with duration and trailing file
             f.write(f"file '{scene_images[-1].resolve().as_posix()}'\n")
-            f.write(f"duration {per_scene_dur}\n")
+            f.write(f"duration {scene_durations[-1]}\n")
             f.write(f"file '{scene_images[-1].resolve().as_posix()}'\n")
 
         # Prepare video filtergraph: enforce true 25 fps, scale to 1080:1920 and burn-in ASS subtitles

@@ -71,17 +71,10 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     (project.scenes || []).slice(0, idx).reduce((acc, sc) => acc + (sc.estimated_duration_seconds || 0), 0)
   );
 
-  // Web Speech API Voiceover Fallback (Vietnamese)
-  const speakSceneWithWebSpeech = (text: string) => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window && !isMuted) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'vi-VN';
-      utterance.rate = voiceSpeed;
-      utterance.volume = isMuted ? 0 : volume;
-      window.speechSynthesis.speak(utterance);
-    }
-  };
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   // Synchronized seek handler ensuring active scene, timestamp, and word highlight stay in perfect lockstep
   const handleSeek = (targetTime: number) => {
@@ -104,6 +97,33 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     }
   };
 
+  // Web Speech API Voiceover Fallback with seamless sentence-to-sentence natural flow
+  const speakSceneWithWebSpeech = (sceneIndex: number) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && !isMuted) {
+      window.speechSynthesis.cancel();
+      const sc = project.scenes?.[sceneIndex];
+      if (!sc) return;
+      const utterance = new SpeechSynthesisUtterance(sc.text);
+      utterance.lang = 'vi-VN';
+      utterance.rate = voiceSpeed;
+      utterance.volume = isMuted ? 0 : volume;
+
+      // DO NOT cut off! Advance to next scene only after the entire sentence finishes speaking
+      utterance.onend = () => {
+        if (isPlayingRef.current) {
+          if (sceneIndex + 1 < (project.scenes || []).length) {
+            setSelectedSceneIndex(sceneIndex + 1);
+            speakSceneWithWebSpeech(sceneIndex + 1);
+          } else {
+            setIsPlaying(false);
+            setCurrentPlaybackTime(0);
+          }
+        }
+      };
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   // Audio Play / Pause / Volume sync effect
   useEffect(() => {
     if (previewMode === 'canvas') {
@@ -113,10 +133,10 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
           audioRef.current.volume = isMuted ? 0 : volume;
           audioRef.current.play().catch(() => {
             // Audio tag error or blocked -> fallback to browser speech synthesis
-            speakSceneWithWebSpeech(activeScene.text);
+            speakSceneWithWebSpeech(selectedSceneIndex);
           });
         } else {
-          speakSceneWithWebSpeech(activeScene.text);
+          speakSceneWithWebSpeech(selectedSceneIndex);
         }
       } else {
         if (audioRef.current) {
@@ -140,48 +160,65 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     }
   }, [isMuted, volume]);
 
-  // Fallback voice when switching scenes in canvas mode while playing
+  // Playback timer & scene tracking matching spoken script duration
   useEffect(() => {
-    if (isPlaying && previewMode === 'canvas') {
-      if (!audioRef.current || audioRef.current.paused || !audioSourceAvailable) {
-        speakSceneWithWebSpeech(activeScene.text);
-      }
-    }
-  }, [selectedSceneIndex]);
+    let animId: number;
+    let timerInterval: any;
 
-  // Playback timer simulation (updated smoothly every 40ms = 25fps for fluid word sync)
-  useEffect(() => {
-    let interval: any;
     if (isPlaying) {
-      interval = setInterval(() => {
-        setCurrentPlaybackTime(prev => {
-          if (prev >= totalDuration) {
-            setIsPlaying(false);
-            if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current.currentTime = 0;
-            }
-            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-              window.speechSynthesis.cancel();
-            }
-            return 0;
-          }
-          const next = prev + 0.04;
-          // Auto switch active scene based on playback
+      // If neural audio tag is actively playing, drive time from the audio track
+      const syncAudio = () => {
+        if (audioRef.current && !audioRef.current.paused && audioRef.current.duration) {
+          const currentPos = audioRef.current.currentTime;
+          setCurrentPlaybackTime(currentPos);
           let accumulated = 0;
           for (let i = 0; i < (project.scenes || []).length; i++) {
             accumulated += project.scenes[i].estimated_duration_seconds;
-            if (next < accumulated || i === (project.scenes || []).length - 1) {
+            if (currentPos < accumulated || i === (project.scenes || []).length - 1) {
               setSelectedSceneIndex(i);
               break;
             }
           }
-          return next;
-        });
-      }, 40);
+          if (currentPos >= totalDuration) {
+            setIsPlaying(false);
+            return;
+          }
+        }
+        if (isPlayingRef.current) {
+          animId = requestAnimationFrame(syncAudio);
+        }
+      };
+
+      if (audioRef.current && audioSourceAvailable) {
+        animId = requestAnimationFrame(syncAudio);
+      } else {
+        // Fallback smooth timer
+        timerInterval = setInterval(() => {
+          setCurrentPlaybackTime(prev => {
+            if (prev >= totalDuration) {
+              setIsPlaying(false);
+              return 0;
+            }
+            const next = prev + 0.05;
+            let accumulated = 0;
+            for (let i = 0; i < (project.scenes || []).length; i++) {
+              accumulated += project.scenes[i].estimated_duration_seconds;
+              if (next < accumulated || i === (project.scenes || []).length - 1) {
+                setSelectedSceneIndex(i);
+                break;
+              }
+            }
+            return next;
+          });
+        }, 50);
+      }
     }
-    return () => clearInterval(interval);
-  }, [isPlaying, totalDuration, project.scenes]);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      clearInterval(timerInterval);
+    };
+  }, [isPlaying, audioSourceAvailable, totalDuration, project.scenes]);
 
   const handleUpdateSceneText = (text: string) => {
     const updatedScenes = [...project.scenes];
