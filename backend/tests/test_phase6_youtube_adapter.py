@@ -221,11 +221,16 @@ class TestPhase6YouTubeAdapter(unittest.TestCase):
 
     def test_08_publisher_service_logs_attempt_in_database(self):
         """PublisherService.publish_post updates database and records PublishingAttemptModel."""
+        import uuid
+        uid = uuid.uuid4().hex[:8]
+        acc_id = f"acc-yt-service-{uid}"
+        queue_id = f"pq-service-{uid}"
+
         acc = SocialAccountModel(
-            id="acc-yt-service-test",
+            id=acc_id,
             platform="youtube",
             account_name="Service Test Channel",
-            external_account_id="UC_serv_test",
+            external_account_id=f"UC_serv_{uid}",
             niche_id="national",
             credential_reference="ya29.••••••••serv",
             encrypted_access_token="ya29.token_serv_test"
@@ -234,20 +239,20 @@ class TestPhase6YouTubeAdapter(unittest.TestCase):
         self.db.flush()
 
         queue_item = PostQueueModel(
-            id="pq-service-01",
+            id=queue_id,
             account_id=acc.id,
             title="Khánh thành trung tâm dữ liệu quốc gia",
             caption="Cơ sở hạ tầng số hiện đại",
             hashtags_json=["#national", "#datacenter"],
             scheduled_time=datetime.now(timezone.utc),
             status="APPROVED",
-            idempotency_key="idemp_service_test_01"
+            idempotency_key=f"idemp_service_test_{uid}"
         )
         self.db.add(queue_item)
         self.db.commit()
 
         # Run publish
-        res = PublisherService.publish_post("pq-service-01", self.db)
+        res = PublisherService.publish_post(queue_id, self.db)
         self.assertTrue(res["success"])
         self.assertEqual(res["status"], "PUBLISHED")
 

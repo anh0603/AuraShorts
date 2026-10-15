@@ -16,6 +16,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.orchestrator import router as orchestrator_router
 from app.api.v1.providers import router as providers_router
 from app.api.v1.publishing import router as publishing_router
+from app.api.v1.trends import router as trends_router
 from app.schemas.orchestrator import ApiResponse
 
 
@@ -66,6 +67,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(orchestrator_router, prefix="/api/v1")
 app.include_router(providers_router, prefix="/api/v1")
 app.include_router(publishing_router, prefix="/api/v1")
+app.include_router(trends_router, prefix="/api/v1")
 
 # Mount storage directory for artifacts, videos, and media assets
 app.mount("/storage", StaticFiles(directory=str(BASE_STORAGE)), name="storage")

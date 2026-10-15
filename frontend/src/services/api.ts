@@ -327,3 +327,49 @@ export const PublishingApi = {
   },
 };
 
+export interface ApiTrendItem {
+  id: string;
+  niche_id: string;
+  title: string;
+  summary: string;
+  trend_score: number;
+  confidence: number;
+  sources_count: number;
+  verification_status: string;
+  primary_publisher: string;
+  published_at: string;
+  url?: string;
+}
+
+export const TrendsApi = {
+  async getTrends(niche?: string): Promise<ApiResponse<ApiTrendItem[]>> {
+    const query = niche && niche !== 'all' ? `?niche=${encodeURIComponent(niche)}` : '';
+    return request<ApiTrendItem[]>(`/trends${query}`);
+  },
+
+  async scanTrends(): Promise<ApiResponse<{ scanned_sources: number; new_trends_found: number; message: string }>> {
+    return request<any>('/trends/scan', {
+      method: 'POST',
+    });
+  },
+
+  async convertTrendToPlan(trendId: string, options: { target_duration_seconds?: number; aspect_ratio?: string; auto_start?: boolean } = {}): Promise<ApiResponse<ApiPlanDetail>> {
+    return request<ApiPlanDetail>(`/trends/${trendId}/convert-to-plan`, {
+      method: 'POST',
+      body: JSON.stringify({
+        target_duration_seconds: options.target_duration_seconds || 60,
+        aspect_ratio: options.aspect_ratio || '9:16',
+        auto_start: options.auto_start ?? true,
+      }),
+    });
+  },
+};
+
+export const StudioApi = {
+  getRenderedVideoUrl(): string {
+    const backendHost = API_BASE_URL.replace('/api/v1', '');
+    return `${backendHost}/storage/artifacts/rendered_short_1080x1920.mp4`;
+  },
+};
+
+

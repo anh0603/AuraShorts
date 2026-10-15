@@ -22,10 +22,13 @@ export function App() {
     setCurrentTab('studio');
   };
 
-  const handleSelectTopicToCreate = (topic: TrendTopic) => {
+  const handleSelectTopicToCreate = (topic: TrendTopic, planId?: string) => {
+    if (planId) {
+      setActivePlanId(planId);
+    }
     // Generate new project from topic and switch to studio
     const newProj: VideoProject = {
-      id: `proj-${topic.id}-${Date.now().toString().slice(-4)}`,
+      id: planId || `proj-${topic.id}-${Date.now().toString().slice(-4)}`,
       title: topic.title,
       niche: topic.niche_id === 'national'
         ? 'Thời Sự & Đất Nước'

@@ -15,9 +15,12 @@ import {
   Upload, 
   Eye, 
   Music,
-  Mic
+  Mic,
+  Film,
+  Download
 } from 'lucide-react';
 import type { VideoProject } from '../types';
+import { StudioApi } from '../services/api';
 
 interface VideoStudioViewProps {
   project: VideoProject;
@@ -35,6 +38,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [showSafeZone, setShowSafeZone] = useState(true);
   const [subtitleMode, setSubtitleMode] = useState<'single_word' | 'word_group' | 'full_paragraph'>('single_word');
+  const [previewMode, setPreviewMode] = useState<'canvas' | 'video'>('canvas');
   const [isRendering, setIsRendering] = useState(false);
   const [renderToast, setRenderToast] = useState<string | null>(null);
   const [voiceSpeed, setVoiceSpeed] = useState(1.1);
@@ -125,9 +129,10 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     setRenderToast("Bắt đầu render video với FFmpeg 7.0 (Audio Mixing + Subtitles Burn-in)...");
     setTimeout(() => {
       setIsRendering(false);
-      setRenderToast("Render video 1080x1920 thành công! Artifact sẵn sàng xuất bản.");
-      setTimeout(() => setRenderToast(null), 4000);
-    }, 2500);
+      setPreviewMode('video');
+      setRenderToast("Render video 1080x1920 hoàn tất! Đã chuyển sang chế độ Xem Video MP4 thực tế.");
+      setTimeout(() => setRenderToast(null), 5000);
+    }, 2200);
   };
 
   // Accurate time within active scene
@@ -317,21 +322,71 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             CENTER PANE: 9:16 Vertical Phone Preview Frame (4 Cols)
            ======================================================== */}
         <div className="lg:col-span-4 p-5 rounded-3xl glass-panel flex flex-col items-center">
-          <div className="w-full flex items-center justify-between mb-2 text-xs text-slate-400">
-            <span className="font-bold text-white flex items-center gap-1.5">
-              <Eye className="w-4 h-4 text-cyan-400" /> Khung Xem Trước (9:16)
-            </span>
-            <button
-              onClick={() => setShowSafeZone(!showSafeZone)}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition ${
-                showSafeZone ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' : 'bg-white/5 text-slate-400'
-              }`}
-            >
-              {showSafeZone ? 'Ẩn Safe-Zone' : 'Hiện Safe-Zone TikTok'}
-            </button>
+          {/* Dual-Mode Selector Bar */}
+          <div className="w-full flex items-center justify-between mb-3 bg-[#0B1322] p-1.5 rounded-2xl border border-white/10 text-xs">
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => setPreviewMode('canvas')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                  previewMode === 'canvas'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Interactive Studio</span>
+              </button>
+              <button
+                onClick={() => setPreviewMode('video')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                  previewMode === 'video'
+                    ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Film className="w-3.5 h-3.5" />
+                <span>Video MP4</span>
+              </button>
+            </div>
+
+            {previewMode === 'video' ? (
+              <a
+                href={StudioApi.getRenderedVideoUrl()}
+                download="AuraShorts_Rendered.mp4"
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-semibold flex items-center gap-1 text-[11px] border border-cyan-500/30 transition"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Tải MP4</span>
+              </a>
+            ) : (
+              <button
+                onClick={() => setShowSafeZone(!showSafeZone)}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition ${
+                  showSafeZone ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' : 'bg-white/5 text-slate-400'
+                }`}
+              >
+                {showSafeZone ? 'Ẩn Safe-Zone' : 'Safe-Zone'}
+              </button>
+            )}
           </div>
 
-          {/* Subtitle Mode Selector Bar */}
+          {previewMode === 'video' ? (
+            /* 9:16 Rendered Video Player */
+            <div className="relative w-[280px] sm:w-[310px] aspect-[9/16] rounded-[32px] overflow-hidden bg-black shadow-2xl border-[6px] border-slate-800/90 flex flex-col justify-center items-center my-auto">
+              <video
+                src={StudioApi.getRenderedVideoUrl()}
+                controls
+                autoPlay
+                loop
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <>
+              {/* Subtitle Mode Selector Bar */}
           <div className="w-full mb-3 p-1.5 rounded-2xl bg-[#0B1322] border border-white/10 flex items-center justify-between gap-1 text-[11px]">
             <span className="text-slate-400 font-semibold px-2">Kiểu Sub:</span>
             <div className="flex items-center gap-1">
@@ -514,6 +569,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
               </button>
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* ========================================================
