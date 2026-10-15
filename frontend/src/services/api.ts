@@ -370,6 +370,10 @@ export const StudioApi = {
     const backendHost = API_BASE_URL.replace('/api/v1', '');
     return `${backendHost}/storage/artifacts/rendered_short_1080x1920.mp4`;
   },
+  getVoiceoverAudioUrl(): string {
+    const backendHost = API_BASE_URL.replace('/api/v1', '');
+    return `${backendHost}/storage/artifacts/voiceover_neural.mp3`;
+  },
 };
 
 

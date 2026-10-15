@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Play, 
   Pause, 
@@ -17,7 +17,10 @@ import {
   Music,
   Mic,
   Film,
-  Download
+  Download,
+  Volume2,
+  VolumeX,
+  RefreshCw
 } from 'lucide-react';
 import type { VideoProject } from '../types';
 import { StudioApi } from '../services/api';
@@ -43,13 +46,20 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
   const [renderToast, setRenderToast] = useState<string | null>(null);
   const [voiceSpeed, setVoiceSpeed] = useState(1.1);
   const [selectedTemplate, setSelectedTemplate] = useState('News Explainer');
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1.0);
+  const [audioSourceAvailable, setAudioSourceAvailable] = useState(true);
+  const [videoKey, setVideoKey] = useState(Date.now());
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Selected scene with safe fallback
   const activeScene = (project.scenes && project.scenes[selectedSceneIndex]) || project.scenes?.[0] || {
     id: 'default',
     order: 1,
     text: '',
-    estimated_duration_seconds: 5,
+    estimated_duration_seconds: 4,
     visual_intent: ''
   };
 
@@ -61,19 +71,83 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     (project.scenes || []).slice(0, idx).reduce((acc, sc) => acc + (sc.estimated_duration_seconds || 0), 0)
   );
 
+  // Web Speech API Voiceover Fallback (Vietnamese)
+  const speakSceneWithWebSpeech = (text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && !isMuted) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      utterance.rate = voiceSpeed;
+      utterance.volume = isMuted ? 0 : volume;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   // Synchronized seek handler ensuring active scene, timestamp, and word highlight stay in perfect lockstep
   const handleSeek = (targetTime: number) => {
     const clamped = Math.max(0, Math.min(targetTime, totalDuration));
     setCurrentPlaybackTime(clamped);
+    if (audioRef.current) {
+      try {
+        audioRef.current.currentTime = clamped;
+      } catch (e) {
+        // Safe seek
+      }
+    }
     let accumulated = 0;
     for (let i = 0; i < (project.scenes || []).length; i++) {
       accumulated += project.scenes[i].estimated_duration_seconds;
-      if (clamped < accumulated || i === project.scenes.length - 1) {
+      if (clamped < accumulated || i === (project.scenes || []).length - 1) {
         setSelectedSceneIndex(i);
         break;
       }
     }
   };
+
+  // Audio Play / Pause / Volume sync effect
+  useEffect(() => {
+    if (previewMode === 'canvas') {
+      if (isPlaying) {
+        if (audioRef.current && audioSourceAvailable) {
+          audioRef.current.playbackRate = voiceSpeed;
+          audioRef.current.volume = isMuted ? 0 : volume;
+          audioRef.current.play().catch(() => {
+            // Audio tag error or blocked -> fallback to browser speech synthesis
+            speakSceneWithWebSpeech(activeScene.text);
+          });
+        } else {
+          speakSceneWithWebSpeech(activeScene.text);
+        }
+      } else {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+      }
+    }
+  }, [isPlaying, previewMode, audioSourceAvailable]);
+
+  // Volume & Mute listener
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+    }
+    if (videoRef.current) {
+      videoRef.current.volume = isMuted ? 0 : volume;
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted, volume]);
+
+  // Fallback voice when switching scenes in canvas mode while playing
+  useEffect(() => {
+    if (isPlaying && previewMode === 'canvas') {
+      if (!audioRef.current || audioRef.current.paused || !audioSourceAvailable) {
+        speakSceneWithWebSpeech(activeScene.text);
+      }
+    }
+  }, [selectedSceneIndex]);
 
   // Playback timer simulation (updated smoothly every 40ms = 25fps for fluid word sync)
   useEffect(() => {
@@ -83,6 +157,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
         setCurrentPlaybackTime(prev => {
           if (prev >= totalDuration) {
             setIsPlaying(false);
+            if (audioRef.current) {
+              audioRef.current.pause();
+              audioRef.current.currentTime = 0;
+            }
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+              window.speechSynthesis.cancel();
+            }
             return 0;
           }
           const next = prev + 0.04;
@@ -350,16 +431,30 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             </div>
 
             {previewMode === 'video' ? (
-              <a
-                href={StudioApi.getRenderedVideoUrl()}
-                download="AuraShorts_Rendered.mp4"
-                target="_blank"
-                rel="noreferrer"
-                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-semibold flex items-center gap-1 text-[11px] border border-cyan-500/30 transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Tải MP4</span>
-              </a>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => {
+                    setVideoKey(Date.now());
+                    setRenderToast("Đã làm mới video MP4 với cache mới nhất!");
+                    setTimeout(() => setRenderToast(null), 3000);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-semibold flex items-center gap-1 text-[11px] border border-cyan-500/30 transition"
+                  title="Tải lại video mới render, xóa bộ nhớ đệm trình duyệt"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Làm mới</span>
+                </button>
+                <a
+                  href={StudioApi.getRenderedVideoUrl()}
+                  download="AuraShorts_Rendered.mp4"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-semibold flex items-center gap-1 text-[11px] border border-cyan-500/30 transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Tải MP4</span>
+                </a>
+              </div>
             ) : (
               <button
                 onClick={() => setShowSafeZone(!showSafeZone)}
@@ -375,8 +470,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
           {previewMode === 'video' ? (
             /* 9:16 Rendered Video Player */
             <div className="relative w-[280px] sm:w-[310px] aspect-[9/16] rounded-[32px] overflow-hidden bg-black shadow-2xl border-[6px] border-slate-800/90 flex flex-col justify-center items-center my-auto">
+              <div className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md text-[10px] text-emerald-400 font-mono flex items-center gap-1.5 border border-emerald-500/30 shadow-lg">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>25 FPS • 1080x1920 • AAC</span>
+              </div>
               <video
-                src={StudioApi.getRenderedVideoUrl()}
+                ref={videoRef}
+                key={videoKey}
+                src={`${StudioApi.getRenderedVideoUrl()}?t=${videoKey}`}
                 controls
                 autoPlay
                 loop
@@ -551,22 +652,79 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
               />
             </div>
 
-            {/* Player Buttons */}
-            <div className="flex items-center justify-center space-x-3 pt-2">
-              <button
-                onClick={() => handleSeek(0)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 transition"
-                title="Quay lại đầu"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="p-3.5 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white shadow-lg shadow-indigo-600/30 transition transform hover:scale-105"
-                title={isPlaying ? 'Tạm dừng' : 'Phát'}
-              >
-                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-              </button>
+            {/* Hidden Neural Voiceover Audio Player */}
+            <audio
+              ref={audioRef}
+              src={StudioApi.getVoiceoverAudioUrl()}
+              preload="auto"
+              onPlay={() => setAudioSourceAvailable(true)}
+              onError={() => {
+                // If local MP3 isn't ready or 404, fallback to Web Speech API
+                setAudioSourceAvailable(false);
+              }}
+            />
+
+            {/* Player Buttons & Volume Controls */}
+            <div className="flex flex-col items-center gap-2 pt-2">
+              <div className="flex items-center justify-center space-x-3">
+                <button
+                  onClick={() => handleSeek(0)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 transition"
+                  title="Quay lại đầu"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="p-3.5 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white shadow-lg shadow-indigo-600/30 transition transform hover:scale-105"
+                  title={isPlaying ? 'Tạm dừng' : 'Phát (Có âm thanh)'}
+                >
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                </button>
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className={`p-2 rounded-xl border transition ${
+                    isMuted
+                      ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                      : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/5'
+                  }`}
+                  title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
+                >
+                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Volume Slider & Audio Status Indicator */}
+              <div className="w-full flex items-center justify-between px-2 pt-1 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{isMuted ? 'MUTE' : `${Math.round(volume * 100)}%`}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => {
+                      setVolume(parseFloat(e.target.value));
+                      setIsMuted(false);
+                    }}
+                    className="w-20 h-1 bg-slate-700 rounded-lg accent-indigo-500 cursor-pointer"
+                    title="Âm lượng giọng đọc"
+                  />
+                </div>
+                <div className="flex items-center gap-1 font-mono text-[10px]">
+                  {isPlaying ? (
+                    <span className="text-emerald-400 flex items-center gap-1 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      {audioSourceAvailable ? 'Audio Neural VN' : 'Web Speech VN'}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">
+                      {audioSourceAvailable ? 'TTS Neural Sẵn sàng' : 'TTS Web Speech Sẵn sàng'}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
             </>
