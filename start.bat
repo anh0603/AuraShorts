@@ -5,7 +5,7 @@ echo        AuraShorts OS v2.0 Launcher
 echo ===================================================
 echo.
 echo [1/2] Dang khoi dong FastAPI Backend tren cong 8000...
-start "AuraShorts Backend" cmd /k "cd /d %~dp0backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
+start "AuraShorts Backend" cmd /k "cd /d %~dp0backend && python -m uvicorn app.main:app --reload --reload-dir app --host 127.0.0.1 --port 8000"
 
 echo [2/2] Dang khoi dong Vite Frontend tren cong 5173...
 start "AuraShorts Frontend" cmd /k "cd /d %~dp0frontend && npm run dev -- --host 127.0.0.1 --port 5173"

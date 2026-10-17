@@ -9,8 +9,9 @@ import re
 import json
 import asyncio
 import subprocess
+from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
@@ -1044,6 +1045,22 @@ async def render_video(req: RenderVideoRequest):
         scheduled_time_raw=req.scheduled_time
     )
 
+    # Automatically upload to Google Drive & Clean up local intermediates
+    gdrive_data: Dict[str, Any] = {}
+    cleanup_data: Dict[str, Any] = {}
+    try:
+        from app.services.storage.google_drive_service import GoogleDriveService
+        gdrive_data = GoogleDriveService.upload_video(
+            file_path=output_mp4,
+            title=req.title or "AuraShorts Video"
+        )
+        cleanup_data = GoogleDriveService.cleanup_intermediates(
+            project_id=safe_proj,
+            keep_rendered_mp4=True
+        )
+    except Exception as gde:
+        print(f"[GoogleDrive / Cleanup Hook Warning]: {gde}")
+
     return ApiResponse(
         success=True,
         data={
@@ -1055,7 +1072,9 @@ async def render_video(req: RenderVideoRequest):
             "scenes_count": len(req.scenes),
             "project_id": safe_proj,
             "voice_id": voice_id,
-            "quality_audit": quality_audit
+            "quality_audit": quality_audit,
+            "gdrive": gdrive_data,
+            "cleanup": cleanup_data
         }
     )
 
@@ -1169,5 +1188,100 @@ def _verify_and_heal_video(
         )
     }
     return audit_report
+
+
+@router.get("/gdrive/status")
+async def get_gdrive_status():
+    """Returns Google Drive connection and storage status."""
+    from app.services.storage.google_drive_service import GoogleDriveService
+    return ApiResponse(success=True, data=GoogleDriveService.get_status())
+
+
+class GDriveConfigRequest(BaseModel):
+    enabled: Optional[bool] = None
+    folder_id: Optional[str] = None
+    auto_cleanup_intermediates: Optional[bool] = None
+    auto_delete_local_mp4_post_upload: Optional[bool] = None
+
+
+@router.post("/gdrive/config")
+async def update_gdrive_config(req: GDriveConfigRequest):
+    """Updates Google Drive upload and cleanup preferences."""
+    from app.services.storage.google_drive_service import GoogleDriveService
+    cfg = {k: v for k, v in req.dict().items() if v is not None}
+    saved = GoogleDriveService.save_config(cfg)
+    return ApiResponse(success=True, data=saved)
+
+
+class GDriveUploadRequest(BaseModel):
+    project_id: str
+    title: Optional[str] = "AuraShorts Video"
+    folder_id: Optional[str] = None
+
+
+@router.post("/gdrive/upload")
+async def upload_project_to_gdrive(req: GDriveUploadRequest):
+    """Manually triggers Google Drive upload for an exported video project."""
+    from app.services.storage.google_drive_service import GoogleDriveService
+    p_file = ARTIFACTS_DIR / f"rendered_{req.project_id}.mp4"
+    if not p_file.exists():
+        p_file = ARTIFACTS_DIR / "rendered_short_1080x1920.mp4"
+    if not p_file.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Rendered video for project {req.project_id} not found."
+        )
+    res = GoogleDriveService.upload_video(p_file, req.title or "AuraShorts Video", req.folder_id)
+    return ApiResponse(success=res.get("success", False), data=res)
+
+
+class CleanupRequest(BaseModel):
+    project_id: Optional[str] = None
+    clean_all_intermediates: Optional[bool] = False
+
+
+@router.post("/storage/cleanup")
+async def cleanup_storage(req: CleanupRequest):
+    """Deletes intermediate files to free disk space and reduce watcher pressure."""
+    from app.services.storage.google_drive_service import GoogleDriveService
+    if req.project_id:
+        res = GoogleDriveService.cleanup_intermediates(req.project_id)
+    else:
+        # Clean all intermediate clips
+        res = GoogleDriveService.cleanup_intermediates("default")
+    return ApiResponse(success=True, data=res)
+
+
+@router.get("/gdrive/auth-url")
+async def get_gdrive_auth_url(redirect_uri: Optional[str] = None):
+    """Returns the Google OAuth2 consent URL for 1-Click Drive authentication."""
+    from app.services.storage.google_drive_service import GoogleDriveService
+    callback = redirect_uri or "http://localhost:8000/api/v1/studio/gdrive/oauth-callback"
+    url = GoogleDriveService.get_oauth_auth_url(callback)
+    if not url:
+        return ApiResponse(
+            success=False,
+            data=None,
+            error="Vui lòng cấu hình GOOGLE_CLIENT_ID trong cài đặt hoặc biến môi trường."
+        )
+    return ApiResponse(success=True, data={"auth_url": url})
+
+
+@router.get("/gdrive/oauth-callback")
+async def gdrive_oauth_callback(code: Optional[str] = None, error: Optional[str] = None):
+    """Handles Google OAuth2 redirect callback and persists token."""
+    from fastapi.responses import RedirectResponse
+    from app.services.storage.google_drive_service import GoogleDriveService
+    frontend_redirect = "http://localhost:5173/exported-videos"
+    if error or not code:
+        return RedirectResponse(url=f"{frontend_redirect}?gdrive_error={error or 'no_code'}")
+    
+    callback = "http://localhost:8000/api/v1/studio/gdrive/oauth-callback"
+    res = GoogleDriveService.exchange_oauth_code(code=code, redirect_uri=callback)
+    if res.get("success"):
+        return RedirectResponse(url=f"{frontend_redirect}?gdrive_connected=true")
+    else:
+        return RedirectResponse(url=f"{frontend_redirect}?gdrive_error={res.get('error', 'failed')}")
+
 
 

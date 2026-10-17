@@ -375,12 +375,19 @@ class AiRouter:
                     clean_part = re.sub(r"[\[\]'\"]", "", raw_claims_part)
                     extracted_claims = [c.strip() for c in clean_part.split(",") if len(c.strip()) > 8]
 
+            # Extract clean content from prompt if present
+            clean_text_context = ""
+            if "Nội dung nguồn:" in prompt:
+                clean_text_context = prompt.split("Nội dung nguồn:")[-1].split("Thời lượng yêu cầu:")[0].strip()
+            elif "Nội dung:" in prompt:
+                clean_text_context = prompt.split("Nội dung:")[-1].split("Thời lượng yêu cầu:")[0].strip()
+
             # Construct viral, high-retention scenes using Viral Storyboard Engine (no repeated phrases)
             try:
                 from app.services.orchestrator.task_handlers import build_viral_storyboard
                 scenes = build_viral_storyboard(
                     title=inferred_title,
-                    clean_text="",
+                    clean_text=clean_text_context,
                     claims=extracted_claims,
                     num_scenes=num_scenes
                 )

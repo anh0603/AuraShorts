@@ -107,6 +107,10 @@ async def search_bing_images(query: str, max_count: int = 12) -> List[str]:
                     break
     except Exception as e:
         safe_q = query.encode('ascii', errors='replace').decode('ascii')
+        print(f"[Bing Image Search Notice] Error searching for '{safe_q}': {e}")
+    return found_urls
+
+
 def clean_script_text(text: str) -> str:
     """Removes meta reporting prefixes, journalistic clutter, and awkward repetitions."""
     if not text:
@@ -125,6 +129,20 @@ def clean_script_text(text: str) -> str:
     return cleaned
 
 
+def _match_topic(text: str, keywords: List[str]) -> bool:
+    """Matches keywords using word boundaries for short acronyms to avoid substring false positives."""
+    t = text.lower()
+    for kw in keywords:
+        kw_l = kw.lower()
+        if len(kw_l) <= 4:
+            if re.search(rf'(?<!\w){re.escape(kw_l)}(?!\w)', t):
+                return True
+        else:
+            if kw_l in t:
+                return True
+    return False
+
+
 def make_viral_hook(title: str) -> str:
     """
     Creates a punchy, viral opening hook (< 18 words) that triggers curiosity.
@@ -140,26 +158,38 @@ def make_viral_hook(title: str) -> str:
 
     t_lower = clean_t.lower()
 
-    # Pattern 1: Crime / Traffic / Violation / Court / Arrest
-    if any(k in t_lower for k in ["xử phạt", "bắt giữ", "khởi tố", "vi phạm", "ma túy", "biển số giả", "tai nạn", "án mạng"]):
+    # Pattern 1: Crime / Traffic / Violation / Conflict / Police / Investigation
+    crime_keywords = [
+        "tạm giữ", "bắt giữ", "khởi tố", "xử phạt", "vi phạm", "ma túy", "biển số giả",
+        "tai nạn", "án mạng", "đánh nhau", "ẩu đả", "xô xát", "hành hung", "gây rối",
+        "tài xế", "xe đầu kéo", "quốc lộ", "chém nhau", "trộm cắp", "lừa đảo", "truy bắt",
+        "công an", "cảnh sát", "hình sự", "va quẹt", "hỗn chiến", "hung hăng", "chèn ép"
+    ]
+    if _match_topic(t_lower, crime_keywords):
         if "biển số giả" in t_lower:
             return "Gắn biển số giả phóng trên cao tốc: Tài xế nhận ngay cái kết đắng."
+        elif any(k in t_lower for k in ["đánh nhau", "ẩu đả", "xô xát", "hành hung", "hỗn chiến"]):
+            return f"Hỗn chiến trên đường trả giá đắt: {clean_t.rstrip('.!?')}."
+        elif "tai nạn" in t_lower:
+            return f"Cảnh báo tai nạn giao thông nghiêm trọng: {clean_t.rstrip('.!?')}."
+        elif any(k in t_lower for k in ["tạm giữ", "bắt giữ", "khởi tố"]):
+            return f"Lưới trời lồng lộng: {clean_t.rstrip('.!?')}."
         elif "xử phạt" in t_lower:
             return f"Cái giá phải trả cho hành vi coi thường luật pháp: {clean_t.rstrip('.!?')}."
-        elif "bắt giữ" in t_lower or "khởi tố" in t_lower:
-            return f"Lưới trời lồng lộng: {clean_t.rstrip('.!?')} vừa bị triệt phá."
         else:
-            return f"Vụ việc gây rúng động dư luận: {clean_t.rstrip('.!?')}."
+            return f"Vụ việc gây xôn xao dư luận: {clean_t.rstrip('.!?')}."
 
     # Pattern 2: Infrastructure / Transportation / Megaprojects
-    if any(k in t_lower for k in ["cao tốc", "đường sắt", "thông xe", "hạ tầng", "sân bay", "bắc nam", "khởi công"]):
-        if "thông xe" in t_lower or "hoàn thành" in t_lower:
+    infra_keywords = ["cao tốc", "đường sắt", "thông xe", "hạ tầng", "sân bay", "bắc nam", "khởi công", "khánh thành", "cầu vượt", "đại dự án"]
+    if _match_topic(t_lower, infra_keywords):
+        if "thông xe" in t_lower or "hoàn thành" in t_lower or "khánh thành" in t_lower:
             return "Chính thức thông xe toàn tuyến: Cột mốc lịch sử mở toang không gian phát triển."
         else:
             return f"Đại công trình nghìn tỷ chuyển động thần tốc: {clean_t.rstrip('.!?')}."
 
-    # Pattern 3: Tech / AI / Breakthrough Science
-    if any(k in t_lower for k in ["pin", "xe điện", "ai", "chip", "bán dẫn", "robot", "ung thư", "kỳ tích"]):
+    # Pattern 3: Tech / AI / Breakthrough Science (strictly contextual phrases, never bare 'ai' substring)
+    tech_keywords = ["pin thể rắn", "xe điện", "trí tuệ nhân tạo", "mô hình ai", "công nghệ ai", "bán dẫn", "vi mạch", "chế tạo robot", "bệnh ung thư", "kỳ tích y khoa"]
+    if _match_topic(t_lower, tech_keywords):
         if "pin" in t_lower or "xe điện" in t_lower:
             return "Chạy 1.000km chỉ một lần sạc: Kỷ nguyên mới của xe điện chính thức bắt đầu."
         elif "ung thư" in t_lower or "y tế" in t_lower:
@@ -168,7 +198,7 @@ def make_viral_hook(title: str) -> str:
             return f"Đột phá công nghệ thay đổi tương lai: {clean_t.rstrip('.!?')}."
 
     # Pattern 4: Administrative resolution / Public Service (Phú Quốc, chính quyền, hồ sơ)
-    if any(k in t_lower for k in ["giải quyết", "hồ sơ", "tồn đọng", "phú quốc", "đặc khu", "cải cách"]):
+    if _match_topic(t_lower, ["giải quyết", "hồ sơ", "tồn đọng", "phú quốc", "đặc khu", "cải cách"]):
         return "Giải quyết thần tốc gần 1.000 hồ sơ tồn đọng: Phú Quốc tạo bước ngoặt lớn."
 
     # Pattern 5: General viral hook under 18 words
@@ -246,16 +276,25 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
 
     needed_body = max(1, num_scenes - 2)
 
-    t_lower = title.lower()
-    if any(k in t_lower for k in ["xử phạt", "bắt giữ", "vi phạm", "công an", "khởi tố", "ma túy"]):
+    crime_keywords = [
+        "tạm giữ", "bắt giữ", "khởi tố", "xử phạt", "vi phạm", "ma túy", "biển số giả",
+        "tai nạn", "án mạng", "đánh nhau", "ẩu đả", "xô xát", "hành hung", "gây rối",
+        "tài xế", "xe đầu kéo", "quốc lộ", "chém nhau", "trộm cắp", "lừa đảo", "truy bắt",
+        "công an", "cảnh sát", "hình sự", "va quẹt", "hỗn chiến", "hung hăng", "chèn ép"
+    ]
+    infra_keywords = ["cao tốc", "đường sắt", "thông xe", "hạ tầng", "sân bay", "bắc nam", "khởi công", "khánh thành", "cầu vượt", "đại dự án"]
+    tech_keywords = ["pin thể rắn", "xe điện", "trí tuệ nhân tạo", "mô hình ai", "công nghệ ai", "bán dẫn", "vi mạch", "chế tạo robot", "bệnh ung thư", "kỳ tích y khoa"]
+    admin_keywords = ["giải quyết", "hồ sơ", "tồn đọng", "phú quốc", "đặc khu", "cải cách"]
+
+    if _match_topic(title, crime_keywords):
         connectors = [
-            "Hành vi vi phạm đã bị lực lượng chức năng phát hiện và lập biên bản ngay tại hiện trường.",
-            "Qua đấu tranh khai thác, đối tượng đã thừa nhận toàn bộ hành vi vi phạm pháp luật.",
-            "Tang vật và các tài liệu liên quan đã được niêm phong để phục vụ công tác điều tra mở rộng.",
-            "Cơ quan chức năng khẳng định sẽ xử lý nghiêm minh, không có vùng cấm đối với mọi vi phạm.",
-            "Vụ việc là lời cảnh tỉnh đắt giá cho bất kỳ ai có ý định coi thường kỷ cương pháp luật."
+            "Vụ việc bắt nguồn từ va chạm giao thông nhưng các bên lại dùng bạo lực để giải quyết mâu thuẫn.",
+            "Cơ quan công an đã nhanh chóng vào cuộc khám nghiệm hiện trường, lấy lời khai và tạm giữ các đối tượng.",
+            "Hành vi gây rối trật tự công cộng và cố ý gây thương tích sẽ bị xử lý nghiêm minh theo quy định pháp luật.",
+            "Cơ quan chức năng khẳng định sẽ làm rõ mọi tình tiết, không có vùng cấm đối với mọi hành vi vi phạm.",
+            "Vụ việc là bài học đắt giá cho sự nóng nảy, thiếu kiềm chế khi tham gia lưu thông trên đường."
         ]
-    elif any(k in t_lower for k in ["cao tốc", "đường sắt", "thông xe", "hạ tầng", "cầu"]):
+    elif _match_topic(title, infra_keywords):
         connectors = [
             "Công trình trọng điểm được thi công thần tốc với chất lượng kỹ thuật được giám sát gắt gao.",
             "Hàng trăm kỹ sư và công nhân đã làm việc xuyên ngày đêm để hoàn thành vượt tiến độ đề ra.",
@@ -263,7 +302,7 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
             "Tuyến đường được kỳ vọng sẽ tạo cú hích tăng trưởng kinh tế mạnh mẽ cho toàn khu vực.",
             "Người dân và cộng đồng doanh nghiệp bày tỏ sự phấn khởi trước diện mạo hạ tầng mới."
         ]
-    elif any(k in t_lower for k in ["pin", "xe điện", "ai", "chip", "công nghệ", "ung thư"]):
+    elif _match_topic(title, tech_keywords):
         connectors = [
             "Đột phá này đạt được nhờ nghiên cứu bền bỉ và ứng dụng vật liệu thế hệ hoàn toàn mới.",
             "Kết quả thử nghiệm thực tế vượt xa kỳ vọng và mở ra tiềm năng thương mại hóa rộng lớn.",
@@ -271,7 +310,7 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
             "Công nghệ mới giúp giải quyết triệt để các rào cản kỹ thuật mà trước đây chưa thể vượt qua.",
             "Tương lai của ngành công nghiệp đang bước sang một trang mới với những tiềm năng vô hạn."
         ]
-    elif any(k in t_lower for k in ["giải quyết", "hồ sơ", "tồn đọng", "phú quốc", "đặc khu", "cải cách"]):
+    elif _match_topic(title, admin_keywords):
         connectors = [
             "Sau một tuần làm việc quyết liệt cả ngày lẫn đêm, cán bộ công chức đã xử lý dứt điểm khối lượng công việc tồn đọng.",
             "Hàng nghìn hồ sơ thủ tục hành chính bị chậm trễ nay đã được bàn giao tận tay người dân và doanh nghiệp.",
@@ -423,8 +462,14 @@ class TaskHandlers:
                     clean_html_for_text = re.sub(r'<(?:div|section)[^>]+class=["\'][^"\']*(?:footer|sidebar|widget|comment|menu|ads|banner|popup|expandheader)[^"\']*["\'][\s\S]*?</(?:div|section)>', '', clean_html_for_text, flags=re.I)
 
                     # Prioritize dedicated article body container if available
-                    art_container = re.search(r'<(?:article|div)[^>]+class=["\'][^"\']*(?:detail-content|content-detail|fck_detail|main-content|article-content|detail-cmain)[^"\']*["\']>[\s\S]*?</(?:article|div)>', clean_html_for_text, re.I)
-                    text_search_space = art_container.group(0) if art_container else clean_html_for_text
+                    container_match = re.search(r'<(?:article|div)[^>]+class=["\'][^"\']*(?:detail-content|content-detail|fck_detail|main-content|article-content|detail-cmain)[^"\']*["\']', clean_html_for_text, re.I)
+                    if container_match:
+                        start_pos = container_match.start()
+                        sub_chunk = clean_html_for_text[start_pos:]
+                        end_m = re.search(r'<(?:footer|aside)|id=["\'](?:comments|binhluan)|class=["\'][^"\']*(?:detail-tab|footer|bottom-info)', sub_chunk, re.I)
+                        text_search_space = sub_chunk[:end_m.start()] if end_m else sub_chunk[:35000]
+                    else:
+                        text_search_space = clean_html_for_text
 
                     body_p = re.findall(r'<p[^>]*class="[^"]*(?:Normal|fck_detail|content|detail)[^"]*"[^>]*>(.*?)</p>', text_search_space, re.DOTALL | re.I)
                     if not body_p:
@@ -703,6 +748,7 @@ class TaskHandlers:
             f"Hãy viết kịch bản video ngắn 9:16 (TikTok, YouTube Shorts) bằng tiếng Việt cho chủ đề sau:\n"
             f"Tiêu đề: {title}\n"
             f"Luận điểm chính: {claims}\n"
+            f"Nội dung nguồn: {clean_text}\n"
             f"Thời lượng yêu cầu: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh chứa 14-18 từ tiếng Việt cuốn hút).\n"
             f"QUY TẮC BẮT BUỘC:\n"
             f"1. Phân cảnh 1 (hook): Cực kỳ giật gân, dưới 18 từ, khơi gợi tò mò, KHÔNG dùng cụm từ 'Theo ghi nhận', 'Nóng: [nguyên văn tiêu đề]'.\n"

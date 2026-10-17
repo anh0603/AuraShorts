@@ -17,7 +17,8 @@ import {
   Search,
   Link2,
   Mic,
-  Zap
+  Zap,
+  Cloud
 } from 'lucide-react';
 import { ExportedVideosApi, PublishingApi, type ApiExportedVideo, StudioApi } from '../services/api';
 
@@ -717,6 +718,16 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                         <Download className="w-4 h-4" />
                       </a>
                     )}
+
+                    <a
+                      href={`https://drive.google.com/drive/search?q=${encodeURIComponent(video.title)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 transition"
+                      title="Mở trên Google Drive Cloud"
+                    >
+                      <Cloud className="w-4 h-4" />
+                    </a>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -809,6 +820,17 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                   <span>Tải File Gốc</span>
                 </a>
               )}
+
+              <a
+                href={`https://drive.google.com/drive/search?q=${encodeURIComponent(activeVideoModal.title)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1 transition"
+                title="Mở trên Google Drive"
+              >
+                <Cloud className="w-3.5 h-3.5" />
+                <span>Google Drive</span>
+              </a>
             </div>
           </div>
         </div>
