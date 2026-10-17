@@ -692,9 +692,6 @@ class TaskHandlers:
                     return script_payload
 
         # Exact pacing: ~16-18 spoken words per scene lasting ~5.5-6.0s
-        # 30s target -> 5-6 scenes (~80 words)
-        # 60s target -> 9-10 scenes (~160-180 words)
-        # 90s target -> 13-15 scenes (~230-260 words)
         if target_duration <= 35:
             num_scenes = 5
         elif target_duration <= 70:
@@ -706,7 +703,11 @@ class TaskHandlers:
             f"Hãy viết kịch bản video ngắn 9:16 (TikTok, YouTube Shorts) bằng tiếng Việt cho chủ đề sau:\n"
             f"Tiêu đề: {title}\n"
             f"Luận điểm chính: {claims}\n"
-            f"Thời lượng yêu cầu: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh chứa 16-20 từ tiếng Việt chi tiết).\n\n"
+            f"Thời lượng yêu cầu: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh chứa 14-18 từ tiếng Việt cuốn hút).\n"
+            f"QUY TẮC BẮT BUỘC:\n"
+            f"1. Phân cảnh 1 (hook): Cực kỳ giật gân, dưới 18 từ, khơi gợi tò mò, KHÔNG dùng cụm từ 'Theo ghi nhận', 'Nóng: [nguyên văn tiêu đề]'.\n"
+            f"2. Các phân cảnh thân bài: Mạch lạc, tự nhiên, chuyển cảnh trôi chảy, tuyệt đối KHÔNG lặp lại các cụm từ sáo rỗng.\n"
+            f"3. Phân cảnh cuối (cta): Kêu gọi thảo luận, bình luận và đăng ký kênh ngắn gọn.\n\n"
             f"Bắt buộc trả về duy nhất một JSON object có cấu trúc:\n"
             f"{{\n"
             f"  \"title\": \"{title}\",\n"
@@ -726,159 +727,43 @@ class TaskHandlers:
                     json_schema={"type": "object"},
                     fallback_mock=True
                 ),
-                timeout=8.0
+                timeout=25.0
             )
             cleaned = _clean_json_text(content)
             parsed = json.loads(cleaned)
+            # Sanitize every scene from LLM output
+            if parsed.get("scenes"):
+                sanitized_scenes = []
+                for idx, sc in enumerate(parsed["scenes"]):
+                    raw_txt = sc.get("text", "")
+                    clean_txt = clean_script_text(raw_txt)
+                    if idx == 0 and len(clean_txt.split()) > 20:
+                        clean_txt = make_viral_hook(title)
+                    sc["text"] = clean_txt
+                    w_cnt = len(clean_txt.split())
+                    sc["estimated_duration_seconds"] = round(max(3.8, (w_cnt / 2.8) + 0.3), 1)
+                    sanitized_scenes.append(sc)
+                parsed["scenes"] = sanitized_scenes
+
             passed, _ = QualityGates.verify_script(parsed)
-            # Accept only if it generated enough scenes to fulfill user requested duration
             if passed and len(parsed.get("scenes", [])) >= max(4, int(num_scenes * 0.8)):
                 script_payload = parsed
         except Exception:
             pass
 
-        # Robust, high-retention contextual script fallback matching EXACT target duration (30s / 60s / 90s)
+        # High-retention Viral Script Engine (zero repetitive phrases)
         if not script_payload:
-            generated_scenes = []
-
-            # Extract clean, factual sentences directly from crawled article text
-            article_sentences = []
-            seen_sent = set()
-            if clean_text:
-                raw_sentences = re.split(r'(?<=[.!?])\s+|\n+', clean_text)
-                for s in raw_sentences:
-                    s_clean = s.strip()
-                    if len(s_clean) > 25 and not any(s_clean.startswith(bad) for bad in ["Ảnh:", "Video:", "Theo ", "Nguồn:", "Xem thêm:", ">>", "Giấy phép", "Tổng Biên tập"]):
-                        norm = re.sub(r'\W+', '', s_clean.lower())
-                        if norm not in seen_sent and not any(norm in ss or ss in norm for ss in seen_sent if len(ss) > 20 and len(norm) > 20):
-                            seen_sent.add(norm)
-                            article_sentences.append(s_clean)
-
-            if article_sentences and len(article_sentences) >= 2:
-                # 1. Authentic Hook with article title
-                hook_text = f"Nóng: {title}! Thông tin chính thức vừa được cơ quan chức năng và báo chí công bố gây xôn xao dư luận."
-                hook_words = len(hook_text.split())
-                generated_scenes.append({
-                    "scene_id": 1,
-                    "type": "hook",
-                    "text": hook_text,
-                    "estimated_duration_seconds": round(max(4.5, (hook_words / 2.8) + 0.4), 1),
-                    "visual_prompt": f"Tiêu điểm tin tức: {title}, tỉ lệ 9:16 sắc nét"
-                })
-
-                # 2. Body scenes from actual article sentences without repeating
-                needed_body = max(1, num_scenes - 2)
-                expansions = [
-                    f"Vấn đề này đang thu hút sự chú ý đặc biệt từ giới chuyên môn và dư luận xã hội.",
-                    f"Các cơ quan chức năng đang tích cực theo dõi và triển khai các bước xử lý tiếp theo.",
-                    f"Thông tin chi tiết đã được đối chiếu chặt chẽ từ các nguồn báo chí uy tín.",
-                    f"Diễn biến sự việc tiếp tục nhận được sự quan tâm sâu sắc của đông đảo bạn đọc."
-                ]
-                distinct_claims = [c for c in claims if not any(re.sub(r'\W+', '', c.lower()) in s_seen for s_seen in seen_sent)]
-
-                for i in range(needed_body):
-                    if i < len(article_sentences):
-                        raw_sent = article_sentences[i]
-                    elif (i - len(article_sentences)) < len(distinct_claims):
-                        raw_sent = distinct_claims[i - len(article_sentences)]
-                    else:
-                        exp_idx = (i - len(article_sentences) - len(distinct_claims)) % len(expansions)
-                        raw_sent = expansions[exp_idx]
-
-                    # Ensure complete, coherent sentences without truncation or trailing ellipsis
-                    sent = re.sub(r'(\s*\.\s*){2,}', ' ', raw_sent).strip()
-                    sent_words = sent.split()
-                    if len(sent_words) > 28:
-                        # Find natural clause boundary between word 12 and 26 to split cleanly
-                        sub_text = " ".join(sent_words[:26])
-                        split_found = False
-                        for sep in [";", " - ", ",", " đồng thời ", " trong đó ", " và "]:
-                            if sep in sub_text:
-                                parts = sub_text.rsplit(sep, 1)
-                                if len(parts[0].split()) >= 10:
-                                    sent = parts[0].strip() + "."
-                                    split_found = True
-                                    break
-                        if not split_found:
-                            sent = " ".join(sent_words[:30]).rstrip(',;:- ') + "."
-                    if not sent.endswith(('.', '!', '?')):
-                        sent = sent.rstrip(',;:- ') + "."
-
-                    w_count = len(sent.split())
-                    dur = round(max(4.2, (w_count / 2.8) + 0.4), 1)
-                    generated_scenes.append({
-                        "scene_id": len(generated_scenes) + 1,
-                        "type": f"body_{i+1}",
-                        "text": sent,
-                        "estimated_duration_seconds": dur,
-                        "visual_prompt": f"Hình ảnh tư liệu thực tế: {title}"
-                    })
-
-                # 3. Call to Action (CTA)
-                cta_text = "Bạn có suy nghĩ gì về vụ việc này? Hãy để lại ý kiến bình luận bên dưới và theo dõi kênh để cập nhật diễn biến mới nhất 24/7!"
-                cta_words = len(cta_text.split())
-                generated_scenes.append({
-                    "scene_id": len(generated_scenes) + 1,
-                    "type": "cta",
-                    "text": cta_text,
-                    "estimated_duration_seconds": round(max(4.5, (cta_words / 2.8) + 0.4), 1),
-                    "visual_prompt": "Đồ họa nút đăng ký chuông thông báo kênh tin tức sắc nét 9:16"
-                })
-            else:
-                # Factual breakdown from claims and narrative progression (NO REPEATING CTA)
-                generated_scenes.append({
-                    "scene_id": 1,
-                    "type": "hook",
-                    "text": f"Nóng: {title}! Thông tin mới nhất vừa được công bố chính thức!",
-                    "estimated_duration_seconds": round(max(4.5, (len(f"Nóng: {title}!".split()) / 2.8) + 0.5), 1),
-                    "visual_prompt": f"Breaking news headline graphics 9:16: {title}"
-                })
-
-                needed_body = max(1, num_scenes - 2)
-                body_facets = []
-                for cl in claims:
-                    cl_str = cl if isinstance(cl, str) else cl.get("claim_text", "")
-                    clean_cl = cl_str.strip()
-                    if clean_cl and clean_cl not in body_facets:
-                        body_facets.append(clean_cl)
-
-                narrative_steps = [
-                    f"Vấn đề này đang thu hút sự chú ý đặc biệt từ giới chuyên môn và cộng đồng bạn đọc.",
-                    f"Các cơ quan chức năng đang tích cực triển khai các bước xử lý và kiểm chứng đồng bộ.",
-                    f"Thông tin chi tiết đã được đối chiếu nghiêm ngặt từ nhiều nguồn báo chí uy tín.",
-                    f"Diễn biến này được kỳ vọng sẽ đem lại những chuyển biến rõ nét trong giai đoạn tới.",
-                    f"Đông đảo bạn đọc và dư luận xã hội tiếp tục bày tỏ sự quan tâm sâu sắc về sự việc."
-                ]
-                for n_step in narrative_steps:
-                    if len(body_facets) >= needed_body:
-                        break
-                    body_facets.append(n_step)
-
-                for i in range(needed_body):
-                    txt = body_facets[i] if i < len(body_facets) else f"Phân tích chuyên sâu về nội dung {title}."
-                    w_count = max(1, len(txt.split()))
-                    generated_scenes.append({
-                        "scene_id": len(generated_scenes) + 1,
-                        "type": f"body_{i + 1}",
-                        "text": txt,
-                        "estimated_duration_seconds": round(max(4.2, (w_count / 2.8) + 0.4), 1),
-                        "visual_prompt": f"Hình ảnh tư liệu xác thực phân cảnh {i + 1}: {title}"
-                    })
-
-                cta_text = "Bạn đánh giá thế nào về diễn biến này? Hãy để lại bình luận và bấm theo dõi kênh để cập nhật tin nóng!"
-                generated_scenes.append({
-                    "scene_id": len(generated_scenes) + 1,
-                    "type": "cta",
-                    "text": cta_text,
-                    "estimated_duration_seconds": round(max(4.5, (len(cta_text.split()) / 2.8) + 0.4), 1),
-                    "visual_prompt": "Channel subscribe and interaction icons 9:16"
-                })
-
+            viral_scenes = build_viral_storyboard(
+                title=title,
+                clean_text=clean_text or "",
+                claims=claims or [],
+                num_scenes=num_scenes
+            )
             script_payload = {
                 "title": title,
                 "aspect_ratio": "9:16",
                 "target_duration_seconds": target_duration,
-                "scenes": generated_scenes
+                "scenes": viral_scenes
             }
 
         # Deterministic Quality Gate validation
