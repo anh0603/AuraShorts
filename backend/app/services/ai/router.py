@@ -375,60 +375,41 @@ class AiRouter:
                     clean_part = re.sub(r"[\[\]'\"]", "", raw_claims_part)
                     extracted_claims = [c.strip() for c in clean_part.split(",") if len(c.strip()) > 8]
 
-            # Construct factual scenes faithfully preserving user's topic and claims
-            scenes = []
-            # 1. Hook
-            hook_text = f"Nóng: {inferred_title}! Thông tin chính thức vừa được công bố thu hút sự chú ý đặc biệt."
-            scenes.append({
-                "scene_id": 1,
-                "type": "hook",
-                "text": hook_text,
-                "estimated_duration_seconds": round(max(4.5, (len(hook_text.split()) / 2.8) + 0.4), 1),
-                "visual_prompt": f"Tiêu điểm tin tức: {inferred_title}, đồ họa dọc 9:16 sắc nét"
-            })
-
-            # 2. Body scenes covering all claims and factual facets without looping
-            needed_body = max(1, num_scenes - 2)
-            body_facets = []
-            for c in extracted_claims:
-                if c not in body_facets:
-                    body_facets.append(c)
-
-            # Contextual expansions if claims are fewer than needed scenes
-            expansion_templates = [
-                f"Sự việc đang nhận được sự quan tâm và theo dõi sát sao từ các cơ quan chuyên môn.",
-                f"Các bên liên quan đang khẩn trương triển khai các biện pháp đồng bộ theo đúng quy định.",
-                f"Thông tin xác thực đã được rà soát kỹ lưỡng nhằm mang lại góc nhìn minh bạch, đa chiều.",
-                f"Diễn biến này được đánh giá sẽ tạo tiền đề quan trọng cho các hoạt động tiếp theo.",
-                f"Cộng đồng và dư luận tiếp tục thảo luận sôi nổi về các khía cạnh liên quan của sự việc.",
-                f"Mọi thông báo cập nhật mới nhất sẽ được thông tin kịp thời tới đông đảo công chúng."
-            ]
-            for exp in expansion_templates:
-                if len(body_facets) >= needed_body:
-                    break
-                if exp not in body_facets:
-                    body_facets.append(exp)
-
-            for i in range(needed_body):
-                b_text = body_facets[i] if i < len(body_facets) else f"Chi tiết phân tích bổ sung về {inferred_title}."
-                w_count = max(1, len(b_text.split()))
+            # Construct viral, high-retention scenes using Viral Storyboard Engine (no repeated phrases)
+            try:
+                from app.services.orchestrator.task_handlers import build_viral_storyboard
+                scenes = build_viral_storyboard(
+                    title=inferred_title,
+                    clean_text="",
+                    claims=extracted_claims,
+                    num_scenes=num_scenes
+                )
+            except Exception:
+                scenes = []
+                hook = f"Diễn biến nóng vừa được công bố: {inferred_title}."
+                scenes.append({
+                    "scene_id": 1,
+                    "type": "hook",
+                    "text": hook,
+                    "estimated_duration_seconds": 4.5,
+                    "visual_prompt": f"Tiêu điểm tin tức 9:16: {inferred_title}"
+                })
+                for i in range(max(1, num_scenes - 2)):
+                    txt = extracted_claims[i] if i < len(extracted_claims) else f"Chi tiết phân tích sâu về {inferred_title}."
+                    scenes.append({
+                        "scene_id": len(scenes) + 1,
+                        "type": f"body_{i + 1}",
+                        "text": txt,
+                        "estimated_duration_seconds": 4.8,
+                        "visual_prompt": f"Hình ảnh tư liệu phân cảnh {i + 1}: {inferred_title}"
+                    })
                 scenes.append({
                     "scene_id": len(scenes) + 1,
-                    "type": f"body_{i + 1}",
-                    "text": b_text,
-                    "estimated_duration_seconds": round(max(4.2, (w_count / 2.8) + 0.4), 1),
-                    "visual_prompt": f"Hình ảnh tư liệu thực tế phân cảnh {i + 1}: {inferred_title}"
+                    "type": "cta",
+                    "text": "Bạn nghĩ sao về thông tin này? Hãy để lại bình luận và bấm đăng ký kênh nhé!",
+                    "estimated_duration_seconds": 4.5,
+                    "visual_prompt": "Đồ họa nút đăng ký chuông thông báo 9:16"
                 })
-
-            # 3. Final Call to Action (Single CTA scene, never duplicated)
-            cta_text = f"Bạn nghĩ sao về thông tin này? Hãy để lại bình luận và bấm đăng ký kênh theo dõi để cập nhật tin mới nhất nhé!"
-            scenes.append({
-                "scene_id": len(scenes) + 1,
-                "type": "cta",
-                "text": cta_text,
-                "estimated_duration_seconds": round(max(4.5, (len(cta_text.split()) / 2.8) + 0.4), 1),
-                "visual_prompt": "Đồ họa nút đăng ký chuông thông báo kênh tin tức sắc nét 9:16"
-            })
 
             fallback_dict = {
                 "title": inferred_title,

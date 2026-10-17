@@ -718,35 +718,6 @@ class SocialPublishingRepository:
                 )
                 db.add(sched)
 
-        # 3. Queued Posts
-        now = datetime.now(timezone.utc)
-        if not db.query(PostQueueModel).filter(PostQueueModel.id == "pq-01").first():
-            post_1 = PostQueueModel(
-                id="pq-01",
-                video_project_id="proj-url-01",
-                account_id="acc-yt-tech",
-                title="Đột phá xe điện chạy 1000km một lần sạc nhờ pin thể rắn",
-                caption="Không chỉ loại bỏ hoàn toàn nguy cơ cháy nổ, pin thể rắn còn có thể sạc đầy 80% chỉ trong 12 phút! Bạn đã sẵn sàng cho kỷ nguyên xe điện mới?",
-                hashtags_json=["#shorts", "#electricvehicle", "#techreview", "#pintheran"],
-                scheduled_time=now,
-                status="PENDING_APPROVAL",
-                idempotency_key="idemp_post_01"
-            )
-            db.add(post_1)
-
-        if not db.query(PostQueueModel).filter(PostQueueModel.id == "pq-02").first():
-            post_2 = PostQueueModel(
-                id="pq-02",
-                video_project_id="proj-url-02",
-                account_id="acc-tk-ai",
-                title="AI phát hiện sớm ung thư trước 3 năm với độ chính xác 98.7%",
-                caption="Bước ngoặt chấn động ngành y tế: AI đọc hàng triệu lát cắt MRI nhanh gấp 10 lần chuyên gia và phát hiện sớm mầm bệnh trước nhiều năm.",
-                hashtags_json=["#tiktokai", "#ytecongnghe", "#kienthuc", "#fyp"],
-                scheduled_time=now,
-                status="APPROVED",
-                idempotency_key="idemp_post_02"
-            )
-            db.add(post_2)
-
+        # 3. Commit seeded accounts and schedules (Do NOT re-seed deleted post queue items)
         db.commit()
 
