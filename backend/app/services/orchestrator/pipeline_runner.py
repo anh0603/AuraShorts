@@ -38,16 +38,34 @@ class PipelineRunner:
     """
 
     def __init__(self, max_concurrency: int = 4):
-        self.semaphore = asyncio.Semaphore(max_concurrency)
+        self.max_concurrency = max_concurrency
+        self._semaphore: Optional[asyncio.Semaphore] = None
         self.active_runners: Dict[str, asyncio.Task] = {}
         self.pause_events: Dict[str, asyncio.Event] = {}
 
+    @property
+    def semaphore(self) -> asyncio.Semaphore:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        if self._semaphore is None or getattr(self, "_semaphore_loop", None) is not current_loop:
+            self._semaphore = asyncio.Semaphore(self.max_concurrency)
+            self._semaphore_loop = current_loop
+        return self._semaphore
+
     def get_pause_event(self, plan_id: str) -> asyncio.Event:
-        if plan_id not in self.pause_events:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        ev = self.pause_events.get(plan_id)
+        if ev is None or getattr(ev, "_event_loop", None) is not current_loop:
             ev = asyncio.Event()
             ev.set()  # Not paused by default
+            ev._event_loop = current_loop
             self.pause_events[plan_id] = ev
-        return self.pause_events[plan_id]
+        return ev
 
     def pause_plan(self, plan_id: str) -> None:
         """Pause plan execution: active tasks finish current step, no new tasks scheduled."""
@@ -170,6 +188,9 @@ class PipelineRunner:
         upstream_outputs = {}
         if plan.context_metadata:
             upstream_outputs.update(plan.context_metadata)
+        upstream_outputs["plan_id"] = plan_id
+        if plan.context_metadata and "scenes" in plan.context_metadata:
+            upstream_outputs.setdefault("scenes", plan.context_metadata["scenes"])
         for p_task in plan.tasks.values():
             if p_task.status == TaskStatus.COMPLETED and p_task.output_payload:
                 upstream_outputs.update(p_task.output_payload)

@@ -7,7 +7,8 @@ import {
   ShieldCheck, 
   Layers, 
   Activity,
-  Link2
+  Link2,
+  Film
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,20 +32,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: 'Live'
     },
     {
+      id: 'exported-videos',
+      label: 'Video Đã Xuất',
+      subtext: 'Tiến trình render & Lịch YouTube',
+      shortLabel: 'Đã xuất',
+      icon: Film,
+      badge: 'Mới 🎬',
+      isHighlight: true
+    },
+    {
       id: 'url-to-video',
       label: 'Tạo Kịch Bản Từ Link',
       subtext: 'Dán link bài báo / tin tức',
       shortLabel: 'Dán Link',
       icon: Link2,
-      badge: 'Mới ✨',
-      isHighlight: true
-    },
-    {
-      id: 'studio',
-      label: 'Video Studio (9:16)',
-      shortLabel: 'Studio',
-      icon: Clapperboard,
-      badge: 'Editor'
+      badge: 'Auto'
     },
     {
       id: 'trends',

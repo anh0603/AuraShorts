@@ -120,32 +120,42 @@ TREND_DATABASE: List[TrendItem] = [
 ]
 
 
+from app.services.radar.trends_radar import trends_radar, FEED_REGISTRY
+
+
 @router.get("", response_model=ApiResponse)
-def get_trends(
+async def get_trends(
     niche: Optional[str] = Query(None, description="Optional niche filter (national, tech, science, finance, geopolitics, history)")
 ):
-    """Retrieves trending news and topics, optionally filtered by niche."""
-    if niche and niche != "all":
-        filtered = [t for t in TREND_DATABASE if t.niche_id == niche]
-    else:
-        filtered = TREND_DATABASE
-
+    """Retrieves live trending news and topics of today, deduplicated across all major newspapers."""
+    trends, meta = await trends_radar.get_latest_trends(niche=niche, force_refresh=False)
     return ApiResponse(
         success=True,
-        data=[t.model_dump() for t in filtered]
+        data=trends
+    )
+
+
+@router.get("/status", response_model=ApiResponse)
+async def get_trends_radar_status():
+    """Retrieves current radar sync status, countdown to next auto-refresh, and metrics."""
+    trends, meta = await trends_radar.get_latest_trends(force_refresh=False)
+    return ApiResponse(
+        success=True,
+        data=meta
     )
 
 
 @router.post("/scan", response_model=ApiResponse)
-def scan_trends():
-    """Triggers an RSS and news radar rescan to discover trending topics."""
+async def scan_trends():
+    """Triggers an immediate live RSS and news radar rescan with deduplication."""
+    trends = await trends_radar.scan_and_cluster_trends(force=True)
     return ApiResponse(
         success=True,
         data={
-            "scanned_sources": 14,
-            "new_trends_found": len(TREND_DATABASE),
-            "timestamp": "Just now",
-            "message": "Đã hoàn thành quét radar tin tức và RSS tự động."
+            "scanned_sources": len(FEED_REGISTRY),
+            "new_trends_found": len(trends),
+            "timestamp": "Vừa cập nhật",
+            "message": f"Đã quét và lọc trùng {len(trends)} bài báo mới nhất hôm nay từ {len(FEED_REGISTRY)} nguồn báo chí."
         }
     )
 
@@ -161,7 +171,14 @@ async def convert_trend_to_plan(
     Converts a trending topic directly into an autonomous DAG orchestration plan
     and dispatches pipeline workers.
     """
-    trend = next((t for t in TREND_DATABASE if t.id == id), None)
+    trend_dict = trends_radar.get_trend_by_id(id)
+    if trend_dict:
+        trend = TrendItem(**{
+            k: v for k, v in trend_dict.items() if k in TrendItem.model_fields
+        })
+    else:
+        trend = next((t for t in TREND_DATABASE if t.id == id), None)
+
     if not trend:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -175,10 +192,16 @@ async def convert_trend_to_plan(
     existing_plan = OrchestrationRepository.find_plan_by_source_url(source_url, db)
     if existing_plan:
         from app.api.v1.orchestrator import _serialize_plan
-        return ApiResponse(
-            success=True,
-            data=_serialize_plan(existing_plan)
-        )
+        from app.models.orchestration import PlanStatus
+        if existing_plan.status == PlanStatus.COMPLETED:
+            return ApiResponse(success=True, data=_serialize_plan(existing_plan))
+        elif existing_plan.status in (PlanStatus.RUNNING, PlanStatus.PAUSED):
+            return ApiResponse(success=True, data=_serialize_plan(existing_plan))
+        elif existing_plan.status == PlanStatus.PENDING:
+            if request.auto_start:
+                background_tasks.add_task(pipeline_runner.run_plan, existing_plan.id)
+            return ApiResponse(success=True, data=_serialize_plan(existing_plan))
+        # If FAILED or CANCELLED, fall through to create a fresh plan
 
     # 2. Decompose Goal into DAG
     try:
@@ -188,6 +211,13 @@ async def convert_trend_to_plan(
             niche=trend.niche_id,
             aspect_ratio=request.aspect_ratio
         )
+        # Enrich crawl task payload with trend facts for self-healing
+        for t in plan.tasks.values():
+            if t.task_type == "CRAWL_SOURCE":
+                t.input_payload["title"] = trend.title
+                t.input_payload["summary"] = trend.summary
+                t.input_payload["niche"] = trend.niche_id
+                break
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

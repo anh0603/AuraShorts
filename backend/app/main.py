@@ -17,6 +17,8 @@ from app.api.v1.orchestrator import router as orchestrator_router
 from app.api.v1.providers import router as providers_router
 from app.api.v1.publishing import router as publishing_router
 from app.api.v1.trends import router as trends_router
+from app.api.v1.studio import router as studio_router
+from app.api.v1.exported_videos import router as exported_videos_router
 from app.schemas.orchestrator import ApiResponse
 
 
@@ -35,8 +37,17 @@ async def lifespan(app: FastAPI):
         recovered = OrchestrationRepository.recover_interrupted_tasks(db)
         print(f"[AuraShorts OS] Database online. Recovered {recovered} interrupted in-flight tasks.")
 
+    # 3. Start background periodic 1-hour scan loop for Trends Radar
+    import asyncio
+    from app.services.radar.trends_radar import trends_radar
+    from app.services.publishing.exported_videos_service import ExportedVideosService
+    radar_task = asyncio.create_task(trends_radar.start_periodic_scan_loop())
+    scheduler_task = asyncio.create_task(ExportedVideosService.start_periodic_scheduler_loop(interval_seconds=15))
+
     yield
 
+    radar_task.cancel()
+    scheduler_task.cancel()
     print("[AuraShorts OS] Orchestration Engine shutting down cleanly.")
 
 
@@ -68,6 +79,8 @@ app.include_router(orchestrator_router, prefix="/api/v1")
 app.include_router(providers_router, prefix="/api/v1")
 app.include_router(publishing_router, prefix="/api/v1")
 app.include_router(trends_router, prefix="/api/v1")
+app.include_router(studio_router, prefix="/api/v1")
+app.include_router(exported_videos_router, prefix="/api/v1")
 
 # Mount storage directory for artifacts, videos, and media assets
 app.mount("/storage", StaticFiles(directory=str(BASE_STORAGE)), name="storage")

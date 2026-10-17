@@ -69,7 +69,8 @@ class TestAiRouterAndRealPipeline(unittest.TestCase):
     def test_03_provider_missing_key_handled_gracefully(self):
         """Provider with missing key reports failure cleanly without crashing."""
         router = AiRouter()
-        # Set groq key to empty
+        # Prevent test router from overwriting user's persistent config file
+        router.save_persisted_config = lambda: None
         router.providers["prov-groq"].api_key = ""
         success, message, latency = asyncio.run(router.test_provider("prov-groq"))
         self.assertFalse(success)
@@ -78,6 +79,7 @@ class TestAiRouterAndRealPipeline(unittest.TestCase):
     def test_04_circuit_breaker_and_fallback(self):
         """Circuit breaker trips after consecutive failures and falls back."""
         router = AiRouter()
+        router.save_persisted_config = lambda: None
         # Mock provider that fails
         failing_prov = AiProviderConfig(
             id="prov-failing",
@@ -141,8 +143,9 @@ class TestAiRouterAndRealPipeline(unittest.TestCase):
 
     def test_07_real_ffmpeg_video_composite(self):
         """Real FFmpeg encodes 1080x1920 MP4 on disk."""
+        from app.services.orchestrator.task_handlers import ARTIFACTS_DIR
         upstream = {
-            "audio_file": "storage/artifacts/voiceover_neural.mp3"
+            "audio_file": str(ARTIFACTS_DIR / "voiceover_neural.mp3")
         }
         result = asyncio.run(TaskHandlers.handle_render_ffmpeg({}, upstream))
         video_path = result["output_path"]
@@ -154,13 +157,14 @@ class TestAiRouterAndRealPipeline(unittest.TestCase):
 
     def test_08_quality_gate_checks_real_ffprobe_and_rejects_missing(self):
         """Quality gate runs real ffprobe and fails if artifact does not exist."""
+        from app.services.orchestrator.task_handlers import ARTIFACTS_DIR
         # 1. Non-existent file must fail with ARTIFACT_NOT_FOUND
         with self.assertRaises(TaskHandlerError) as ctx:
-            asyncio.run(TaskHandlers.handle_quality_gate_check({}, {"output_path": "storage/artifacts/ghost_file.mp4"}))
+            asyncio.run(TaskHandlers.handle_quality_gate_check({}, {"output_path": str(ARTIFACTS_DIR / "ghost_file.mp4")}))
         self.assertEqual(ctx.exception.error_code, "ARTIFACT_NOT_FOUND")
 
         # 2. Existing valid file must pass
-        valid_path = "storage/artifacts/rendered_short_1080x1920.mp4"
+        valid_path = str(ARTIFACTS_DIR / "rendered_short_1080x1920.mp4")
         if os.path.exists(valid_path):
             res = asyncio.run(TaskHandlers.handle_quality_gate_check({}, {"output_path": valid_path}))
             self.assertEqual(res["quality_gate_status"], "PASSED")

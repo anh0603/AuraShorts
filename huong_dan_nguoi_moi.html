@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cẩm Nang Hướng Dẫn Người Mới Sử Dụng StoryMXH Từ A Đến Z</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    .slide { display: none; }
+    .slide.active { display: block; animation: slideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes slideFadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .step-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-3 sm:p-5 font-sans">
+  <div class="max-w-4xl mx-auto bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-[640px]">
+    
+    <!-- Top Header & Navigation Bar -->
+    <header class="p-5 border-b border-[var(--border)] bg-[var(--card)]/90 backdrop-blur flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 via-cyan-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-lg shadow-inner">
+          🚀
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-[var(--foreground)] tracking-tight">Cẩm Nang Hướng Dẫn Người Mới Bắt Đầu StoryMXH</h1>
+          <p class="text-xs text-[var(--muted-foreground)]">Làm chủ công cụ sản xuất & tự động đăng video ngắn (Shorts/TikTok/Reels) trong 5 phút</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="slideIndicator" class="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] font-mono">1 / 5</span>
+      </div>
+    </header>
+
+    <!-- Progress Indicator Bar -->
+    <div class="w-full bg-[var(--border)] h-1.5 overflow-hidden">
+      <div id="progressBar" class="bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 h-full transition-all duration-300" style="width: 20%"></div>
+    </div>
+
+    <!-- Main Content Presentation Slides -->
+    <main class="p-6 sm:p-8 flex-1 overflow-y-auto">
+
+      <!-- SLIDE 1: CHECKLIST THIẾT LẬP BAN ĐẦU (2 PHÚT) -->
+      <section id="slide-1" class="slide active space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-xs font-semibold border border-indigo-500/20">
+          <span>BƯỚC 1 • KHỞI ĐỘNG HỆ THỐNG</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">3 Bước Cài Đặt Đầu Tiên (Chỉ Mất 2 Phút)</h2>
+        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          Trước khi tạo video đầu tiên, hãy đảm bảo hệ thống đã sẵn sàng qua 3 bước kiểm tra nhanh sau:
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <!-- Step 1 Card -->
+          <div class="step-card p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3 transition-all duration-200">
+            <div class="flex items-center justify-between">
+              <span class="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-500/30">1</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">Quan Trọng</span>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-[var(--foreground)]">Kiểm Tra AI Provider</h4>
+              <p class="text-xs text-[var(--muted-foreground)] mt-1">Vào mục <strong>Quản Trị AI</strong>, đảm bảo ít nhất 1 nhà cung cấp (Gemini, Groq hoặc OpenRouter) báo <span class="text-emerald-400 font-semibold">🟢 HEALTHY</span>.</p>
+            </div>
+            <div class="pt-2 border-t border-[var(--border)] text-[11px] text-cyan-400 font-mono">
+              ✓ Đã tích hợp sẵn key
+            </div>
+          </div>
+
+          <!-- Step 2 Card -->
+          <div class="step-card p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3 transition-all duration-200">
+            <div class="flex items-center justify-between">
+              <span class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center justify-center border border-cyan-500/30">2</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-semibold border border-cyan-500/20">Kênh Video</span>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-[var(--foreground)]">Kết Nối Kênh YouTube</h4>
+              <p class="text-xs text-[var(--muted-foreground)] mt-1">Vào <strong>Tài Khoản & Kênh</strong> để liên kết kênh YouTube bạn muốn đăng bài tự động (bằng OAuth hoặc Refresh Token).</p>
+            </div>
+            <div class="pt-2 border-t border-[var(--border)] text-[11px] text-indigo-400 font-mono">
+              ✓ Quản lý đa kênh an toàn
+            </div>
+          </div>
+
+          <!-- Step 3 Card -->
+          <div class="step-card p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3 transition-all duration-200">
+            <div class="flex items-center justify-between">
+              <span class="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center border border-purple-500/30">3</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 font-semibold border border-purple-500/20">Tự Động Hóa</span>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-[var(--foreground)]">Chọn Khung Giờ Đăng</h4>
+              <p class="text-xs text-[var(--muted-foreground)] mt-1">Thiết lập giờ đăng mong muốn (Ví dụ: 11:30 trưa và 19:30 tối) để robot tự động quét tin và xuất bản đều đặn mỗi ngày.</p>
+            </div>
+            <div class="pt-2 border-t border-[var(--border)] text-[11px] text-purple-400 font-mono">
+              ✓ Cron Engine chạy ngầm
+            </div>
+          </div>
+        </div>
+
+        <!-- Highlight Note -->
+        <div class="p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 flex items-start gap-3 text-xs">
+          <span class="text-indigo-400 text-base">💡</span>
+          <div class="space-y-1">
+            <strong class="text-indigo-300">Mẹo cho người mới:</strong>
+            <p class="text-[var(--muted-foreground)]">Bạn không cần phải có thẻ tín dụng hay nạp tiền. Hệ thống được tối ưu 100% để vận hành với các gói miễn phí chất lượng cao (Gemini Flash, Groq Cloud và Edge-TTS).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: 3 CÁCH TẠO VIDEO ĐẦU TIÊN -->
+      <section id="slide-2" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 text-xs font-semibold border border-cyan-500/20">
+          <span>BƯỚC 2 • KHỞI TẠO NỘI DUNG</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">3 Cách Tạo Video Nhanh Chóng & Dễ Dàng</h2>
+        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          Tùy theo nguồn tài liệu bạn có sẵn, StoryMXH cung cấp 3 cách tiếp cận cực kỳ tiện lợi:
+        </p>
+
+        <div class="space-y-3.5">
+          <!-- Method 1 -->
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] flex items-start gap-4">
+            <div class="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center shrink-0 border border-cyan-500/30">
+              🔗
+            </div>
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <h4 class="text-sm font-bold text-[var(--foreground)]">Cách 1: Dán Link Bài Báo Bất Kỳ (Cực Kỳ Khuyên Dùng)</h4>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">Khuyên dùng</span>
+              </div>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Chỉ cần copy đường link bài báo từ VnExpress, Dân Trí, Tuổi Trẻ, GenK... và dán vào ô <strong>"Nhập URL bài viết"</strong>. Robot sẽ tự động tải nội dung, lọc sạch quảng cáo, tải ảnh gốc độ nét cao và chuyển thể thành kịch bản 60 giây.
+              </p>
+            </div>
+          </div>
+
+          <!-- Method 2 -->
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] flex items-start gap-4">
+            <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center shrink-0 border border-indigo-500/30">
+              📡
+            </div>
+            <div class="space-y-1">
+              <h4 class="text-sm font-bold text-[var(--foreground)]">Cách 2: Chọn Từ Radar Tin Nóng (Trend Radar)</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Mở mục <strong>"Xu Hướng & Tin Nóng"</strong>, hệ thống tự động tổng hợp các tin tức đang được quan tâm nhiều nhất trong ngày. Bạn chỉ cần bấm <strong>"Tạo Video Từ Tin Này"</strong> là hệ thống tự lo toàn bộ các bước còn lại.
+              </p>
+            </div>
+          </div>
+
+          <!-- Method 3 -->
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] flex items-start gap-4">
+            <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center shrink-0 border border-purple-500/30">
+              ✍️
+            </div>
+            <div class="space-y-1">
+              <h4 class="text-sm font-bold text-[var(--foreground)]">Cách 3: Tự Nhập Ý Tưởng / Dàn Ý Riêng</h4>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Nhập bất kỳ chủ đề nào bạn muốn (Ví dụ: <em>"5 mẹo quản lý tài chính cá nhân cho sinh viên"</em>). AI sẽ tự động phân tích và tạo kịch bản phân cảnh hoàn chỉnh gồm Mở đầu (Hook) - Thân bài (3 mẹo) - Kêu gọi hành động (CTA).
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: TÙY CHỈNH STUDIO & GIỌNG ĐỌC AI -->
+      <section id="slide-3" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+          <span>BƯỚC 3 • CHỈNH SỬA & CÁ NHÂN HÓA</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Làm Chủ Studio Biên Tập Video</h2>
+        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          Sau khi kịch bản được tạo, bạn có toàn quyền xem trước và tinh chỉnh để video mang đậm phong cách riêng:
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Voice selection -->
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2.5">
+            <div class="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+              <span>🎙️ Giọng Đọc Neural AI (Edge-TTS)</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)]">
+              Tích hợp sẵn các giọng đọc tiếng Việt truyền cảm, phát âm tự nhiên:
+            </p>
+            <div class="space-y-1.5 text-xs">
+              <div class="p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-between">
+                <span class="font-medium">Hoài My (Nữ miền Bắc)</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Dịu dàng, tin tức</span>
+              </div>
+              <div class="p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-between">
+                <span class="font-medium">Nam Minh (Nam miền Bắc)</span>
+                <span class="text-[10px] text-cyan-400 font-mono">Phóng sự, mạnh mẽ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 9:16 blurred backdrop -->
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2.5">
+            <div class="flex items-center gap-2 text-cyan-400 font-bold text-sm">
+              <span>📱 Chuẩn Khung Hình 9:16 Shorts</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)]">
+              Công nghệ xử lý hình ảnh hiện đại chống méo hình:
+            </p>
+            <ul class="text-xs text-[var(--muted-foreground)] space-y-1 list-disc list-inside">
+              <li><strong>Nền mờ (Blurred Backdrop)</strong>: Ảnh ngang được phóng to làm nền mờ sang trọng.</li>
+              <li><strong>Ảnh chính giữa</strong>: Giữ nguyên tỉ lệ gốc sắc nét, không bị kéo dãn.</li>
+              <li><strong>Phụ đề đồng bộ</strong>: Chữ to rõ ràng ở vùng an toàn màn hình điện thoại.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Render Notice -->
+        <div class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-400 text-base">⚡</span>
+            <span>Chỉ mất khoảng <strong>30 đến 45 giây</strong> để FFmpeg ghép nối âm thanh, phụ đề và xuất file video MP4 Full HD 1080x1920.</span>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 font-semibold text-[11px]">Tốc độ cao</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: XUẤT BẢN & LÊN LỊCH ĐĂNG BÀI -->
+      <section id="slide-4" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-semibold border border-amber-500/20">
+          <span>BƯỚC 4 • PHÂN PHỐI LÊN KÊNH</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Xuất Bản & Lên Lịch Đăng YouTube Shorts</h2>
+        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          Không cần phải tải video về máy rồi mở ứng dụng YouTube để upload thủ công. StoryMXH làm điều đó hoàn toàn tự động:
+        </p>
+
+        <div class="space-y-3">
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] flex items-start gap-3.5">
+            <span class="text-lg">🎯</span>
+            <div>
+              <h4 class="text-xs sm:text-sm font-bold text-[var(--foreground)]">Tự Động Viết Tiêu Đề & Hashtags Chuẩn SEO</h4>
+              <p class="text-xs text-[var(--muted-foreground)] mt-1">
+                AI tự động gắn các thẻ xu hướng bắt buộc như <code>#shorts</code>, <code>#tintuc</code>, <code>#review</code> và tạo phần mô tả chi tiết nguồn bài viết để tối ưu lượt đề xuất từ thuật toán YouTube.
+              </p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] flex items-start gap-3.5">
+            <span class="text-lg">⏰</span>
+            <div>
+              <h4 class="text-xs sm:text-sm font-bold text-[var(--foreground)]">Đăng Ngay Hoặc Đặt Lịch Hẹn Giờ</h4>
+              <p class="text-xs text-[var(--muted-foreground)] mt-1">
+                Bạn có thể chọn <strong>"Đăng Ngay"</strong> (Public) để video lên kênh tức thì, hoặc chọn <strong>"Hẹn Giờ"</strong> để video tự động phát vào khung giờ vàng có nhiều người xem nhất.
+              </p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] flex items-start gap-3.5">
+            <span class="text-lg">🛡️</span>
+            <div>
+              <h4 class="text-xs sm:text-sm font-bold text-[var(--foreground)]">Chế Độ Xem Trước An Toàn (Unlisted / Private)</h4>
+              <p class="text-xs text-[var(--muted-foreground)] mt-1">
+                Nếu mới làm quen, bạn có thể chọn chế độ <strong>Không công khai (Unlisted)</strong> để kiểm tra video trên kênh trước khi bật công khai cho cộng đồng xem.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: BÍ QUYẾT TĂNG TƯƠNG TÁC & FAQ -->
+      <section id="slide-5" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-xs font-semibold border border-purple-500/20">
+          <span>BƯỚC 5 • MẸO NÂNG CAO & GIẢI ĐÁP</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Mẹo Thực Chiến Tăng Triệu View & Giải Đáp Thắc Mắc</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Tips -->
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3">
+            <h4 class="text-sm font-bold text-cyan-400 flex items-center gap-1.5">
+              <span>⭐ Bí Quyết Giữ Chân Người Xem (Retention Rate)</span>
+            </h4>
+            <ul class="text-xs text-[var(--muted-foreground)] space-y-2 leading-relaxed">
+              <li>• <strong>3 giây đầu tiên (Hook):</strong> Đặt câu hỏi kích thích tò mò hoặc khẳng định bất ngờ để người xem không lướt qua.</li>
+              <li>• <strong>Thời lượng vàng:</strong> Video ngắn tối ưu nhất nên dao động từ <strong>35 đến 55 giây</strong>.</li>
+              <li>• <strong>Nhạc nền (BGM):</strong> Luôn giữ âm lượng BGM ở mức vừa phải (~15-20%) để không lấn át lời thuyết minh.</li>
+            </ul>
+          </div>
+
+          <!-- FAQ -->
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-3">
+            <h4 class="text-sm font-bold text-indigo-400 flex items-center gap-1.5">
+              <span>❓ Câu Hỏi Thường Gặp (FAQ)</span>
+            </h4>
+            <div class="space-y-2 text-xs text-[var(--muted-foreground)]">
+              <div>
+                <strong class="text-[var(--foreground)] block">Hỏi: Mỗi ngày tôi có thể làm bao nhiêu video?</strong>
+                <span>Đáp: Với gói Gemini & Groq hiện tại, bạn có thể tạo hàng chục video mỗi ngày hoàn toàn miễn phí.</span>
+              </div>
+              <div>
+                <strong class="text-[var(--foreground)] block">Hỏi: Nếu render bị ngắt quãng thì sao?</strong>
+                <span>Đáp: Hệ thống có cơ chế <strong>Checkpoint Resume</strong>, bạn chỉ cần bấm "Thử Lại" là hệ thống tiếp tục render mà không mất dữ liệu.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/30 to-purple-950/30 text-center space-y-2">
+          <p class="text-sm font-bold text-white">Bạn Đã Sẵn Sàng Bắt Đầu Sáng Tạo?</p>
+          <p class="text-xs text-[var(--muted-foreground)]">Hãy dán ngay 1 đường link bài viết tâm đắc vào ô tạo video để trải nghiệm thành phẩm đầu tiên!</p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Controls -->
+    <footer class="p-4 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur flex items-center justify-between">
+      <button 
+        id="prevBtn" 
+        onclick="changeSlide(-1)"
+        class="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--accent)] hover:bg-[var(--accent)]/80 text-[var(--foreground)] border border-[var(--border)] transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <span>← Trang Trước</span>
+      </button>
+
+      <div class="flex items-center gap-1.5" id="dotsContainer">
+        <button onclick="goToSlide(1)" class="w-2.5 h-2.5 rounded-full bg-indigo-500 transition-all"></button>
+        <button onclick="goToSlide(2)" class="w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+        <button onclick="goToSlide(3)" class="w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+        <button onclick="goToSlide(4)" class="w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+        <button onclick="goToSlide(5)" class="w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+      </div>
+
+      <button 
+        id="nextBtn" 
+        onclick="changeSlide(1)"
+        class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5"
+      >
+        <span>Trang Tiếp →</span>
+      </button>
+    </footer>
+
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 5;
+
+    function updateSlideUI() {
+      // Toggle slide visibility
+      for (let i = 1; i <= totalSlides; i++) {
+        const slide = document.getElementById(`slide-${i}`);
+        if (slide) {
+          if (i === currentSlide) {
+            slide.classList.add('active');
+          } else {
+            slide.classList.remove('active');
+          }
+        }
+      }
+
+      // Update Indicator & Progress
+      document.getElementById('slideIndicator').innerText = `${currentSlide} / ${totalSlides}`;
+      const percentage = (currentSlide / totalSlides) * 100;
+      document.getElementById('progressBar').style.width = `${percentage}%`;
+
+      // Update Buttons
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      
+      prevBtn.disabled = (currentSlide === 1);
+      if (currentSlide === totalSlides) {
+        nextBtn.innerHTML = '<span>Hoàn Tất ✓</span>';
+      } else {
+        nextBtn.innerHTML = '<span>Trang Tiếp →</span>';
+      }
+
+      // Update Dots
+      const dots = document.getElementById('dotsContainer').children;
+      for (let i = 0; i < dots.length; i++) {
+        if (i === currentSlide - 1) {
+          dots[i].className = 'w-4 h-2 rounded-full bg-indigo-500 transition-all';
+        } else {
+          dots[i].className = 'w-2 h-2 rounded-full bg-[var(--border)] hover:bg-[var(--muted-foreground)] transition-all';
+        }
+      }
+    }
+
+    function changeSlide(direction) {
+      const target = currentSlide + direction;
+      if (target >= 1 && target <= totalSlides) {
+        currentSlide = target;
+        updateSlideUI();
+      }
+    }
+
+    function goToSlide(slideNum) {
+      if (slideNum >= 1 && slideNum <= totalSlides) {
+        currentSlide = slideNum;
+        updateSlideUI();
+      }
+    }
+
+    // Keyboard navigation (Left / Right arrow keys)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        changeSlide(1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        changeSlide(-1);
+      }
+    });
+
+    // Initialize UI on load
+    updateSlideUI();
+  </script>
+</body>
+</html>

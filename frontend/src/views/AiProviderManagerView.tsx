@@ -8,7 +8,11 @@ import {
   Layers, 
   Lock,
   XCircle,
-  Key
+  Key,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  CheckCircle2
 } from 'lucide-react';
 import type { AiProvider } from '../types';
 import { OrchestratorApi } from '../services/api';
@@ -32,6 +36,12 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
   const [newProviderName, setNewProviderName] = useState('');
   const [newBaseUrl, setNewBaseUrl] = useState('');
   const [newApiKey, setNewApiKey] = useState('');
+
+  // Edit API Key Modal State
+  const [editingProvider, setEditingProvider] = useState<AiProvider | null>(null);
+  const [editApiKeyInput, setEditApiKeyInput] = useState('');
+  const [showApiKeyText, setShowApiKeyText] = useState(false);
+  const [isSavingKey, setIsSavingKey] = useState(false);
 
   // Fetch real providers on mount
   useEffect(() => {
@@ -158,6 +168,80 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
     setTimeout(() => setTestResultFeedback(null), 5000);
   };
 
+  const getProviderHelpInfo = (provId: string) => {
+    if (provId === 'prov-groq') {
+      return {
+        link: 'https://console.groq.com/keys',
+        linkLabel: 'Lấy Groq API Key miễn phí',
+        hint: 'Bắt đầu bằng gsk_... (Tốc độ phản hồi cực nhanh ~300 tokens/s, miễn phí 100%)',
+        placeholder: 'gsk_...'
+      };
+    }
+    if (provId === 'prov-gemini') {
+      return {
+        link: 'https://aistudio.google.com/app/apikey',
+        linkLabel: 'Lấy Google Gemini API Key miễn phí',
+        hint: 'Bắt đầu bằng AIzaSy... (Hạn mức miễn phí 15 requests/phút, hiểu ngữ cảnh 1M tokens)',
+        placeholder: 'AIzaSy...'
+      };
+    }
+    if (provId === 'prov-openrouter') {
+      return {
+        link: 'https://openrouter.ai/keys',
+        linkLabel: 'Lấy OpenRouter API Key',
+        hint: 'Bắt đầu bằng sk-or-... (Hỗ trợ hàng chục model :free)',
+        placeholder: 'sk-or-...'
+      };
+    }
+    return {
+      link: '',
+      linkLabel: '',
+      hint: 'Nhập API Key tương thích OpenAI',
+      placeholder: 'sk-...'
+    };
+  };
+
+  const handleSaveApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProvider) return;
+    const trimmed = editApiKeyInput.trim();
+    if (!trimmed) {
+      setTestResultFeedback('Vui lòng nhập API Key hợp lệ.');
+      return;
+    }
+
+    setIsSavingKey(true);
+    setTestResultFeedback(`Đang lưu API Key cho ${editingProvider.name}...`);
+
+    try {
+      const res = await OrchestratorApi.updateProvider(editingProvider.id, {
+        api_key: trimmed
+      });
+
+      if (res.success) {
+        setTestResultFeedback(`Đã lưu API Key cho ${editingProvider.name}! Đang kiểm tra kết nối...`);
+        const targetId = editingProvider.id;
+        setEditingProvider(null);
+        setEditApiKeyInput('');
+
+        // Refresh providers from backend
+        const refresh = await OrchestratorApi.getProviders();
+        if (refresh.success && refresh.data) {
+          onUpdateProviders(refresh.data);
+        }
+
+        // Auto trigger connection test to switch status to HEALTHY
+        await handleTestConnection(targetId);
+      } else {
+        setTestResultFeedback(`Lỗi lưu API Key: ${res.error?.message || 'Không xác định'}`);
+      }
+    } catch (err: any) {
+      setTestResultFeedback(`Lỗi: ${err.message}`);
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Test feedback toast */}
@@ -271,11 +355,18 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                   <div className="text-xs text-slate-400 font-mono mt-1 truncate max-w-xs">
                     {prov.base_url}
                   </div>
-                  {/* Masked Secret Key Display */}
-                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400 font-mono">
-                    <Key className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span>API Key: {prov.masked_api_key || '••••••••'}</span>
-                  </div>
+                  {/* Masked Secret Key Display or Missing Notice */}
+                  {prov.has_api_key && prov.masked_api_key ? (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-300 font-mono">
+                      <Key className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span>API Key: <span className="text-emerald-400 font-semibold">{prov.masked_api_key}</span></span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 w-fit">
+                      <AlertTriangle className="w-3 h-3 shrink-0 text-amber-400" />
+                      <span>Chưa cấu hình API Key</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Circuit Status Badge */}
@@ -302,6 +393,21 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* Degraded / Missing Key Notice */}
+              {(isDegraded || isOpenCircuit || !prov.has_api_key) && (
+                <div className="my-3 p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 text-xs">
+                  <div className="flex items-center gap-1.5 text-amber-300 font-semibold">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>{!prov.has_api_key ? 'Cần cấu hình API Key để kích hoạt' : 'Cảnh báo DEGRADED / OPEN_CIRCUIT'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                    {prov.last_error_message || (!prov.has_api_key 
+                      ? 'Nhà cung cấp này chưa có API Key trong hệ thống. Hãy bấm nút "Cấu hình Key" bên dưới để nhập key miễn phí và chuyển sang trạng thái HEALTHY.' 
+                      : 'Kết nối kiểm tra không thành công hoặc gặp giới hạn quota.')}
+                  </p>
+                </div>
+              )}
 
               {/* Verified Quota & Latency Metrics */}
               <div className="grid grid-cols-2 gap-3 my-4 p-3 rounded-xl bg-[#1E293B]/70 border border-white/5 text-xs">
@@ -353,6 +459,19 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                 </span>
 
                 <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      setEditingProvider(prov);
+                      setEditApiKeyInput('');
+                      setShowApiKeyText(false);
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-medium border border-emerald-500/30 flex items-center gap-1.5 transition"
+                    title="Nhập hoặc đổi API Key"
+                  >
+                    <Key className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{prov.has_api_key ? 'Đổi Key' : 'Cấu hình Key'}</span>
+                  </button>
+
                   <button
                     onClick={() => handleDiscoverCatalog(prov.id)}
                     disabled={isTesting}
@@ -493,6 +612,112 @@ export const AiProviderManagerView: React.FC<AiProviderManagerViewProps> = ({
                   className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/30"
                 >
                   Lưu & Kiểm Tra Kết Nối
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit API Key Modal */}
+      {editingProvider && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-[#0F172A] border border-white/20 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-base font-bold text-white">
+                  Cấu Hình API Key: {editingProvider.name}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setEditingProvider(null)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Provider Help Link */}
+            {(() => {
+              const help = getProviderHelpInfo(editingProvider.id);
+              return (
+                <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs space-y-2">
+                  <div className="flex items-center justify-between text-indigo-300">
+                    <span className="font-semibold">Nơi lấy API Key:</span>
+                    {help.link && (
+                      <a
+                        href={help.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-cyan-400 hover:underline flex items-center gap-1 font-medium"
+                      >
+                        <span>{help.linkLabel}</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    {help.hint}
+                  </p>
+                </div>
+              );
+            })()}
+
+            <form onSubmit={handleSaveApiKey} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="text-slate-300 font-medium block">
+                  Nhập API Key Mới:
+                </label>
+                <div className="relative">
+                  <input
+                    type={showApiKeyText ? 'text' : 'password'}
+                    required
+                    placeholder={getProviderHelpInfo(editingProvider.id).placeholder}
+                    value={editApiKeyInput}
+                    onChange={(e) => setEditApiKeyInput(e.target.value)}
+                    className="w-full p-2.5 pr-10 rounded-lg bg-[#0B1322] border border-white/10 text-white focus:outline-none focus:border-emerald-500 font-mono text-xs"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKeyText(!showApiKeyText)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showApiKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
+                  Key được bảo mật trong secret store, hệ thống sẽ tự động test kết nối sau khi lưu.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  disabled={isSavingKey}
+                  onClick={() => setEditingProvider(null)}
+                  className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 font-medium"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingKey || !editApiKeyInput.trim()}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold shadow-md shadow-emerald-600/30 flex items-center gap-1.5"
+                >
+                  {isSavingKey ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Lưu & Kích Hoạt Ngay</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

@@ -22,7 +22,7 @@ class GroqAdapter(BaseAiAdapter):
     def __init__(self, config: AiProviderConfig):
         super().__init__(config)
         self.base_url = config.base_url.rstrip("/") or "https://api.groq.com/openai/v1"
-        self.default_model = "llama-3.3-70b-versatile"
+        self.default_model = "openai/gpt-oss-120b"
 
     async def test_connection(self) -> Tuple[bool, str, int]:
         if not self.config.api_key:
@@ -93,6 +93,12 @@ class GroqAdapter(BaseAiAdapter):
             async with httpx.AsyncClient(timeout=timeout) as client:
                 res = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
                 duration_ms = int((time.time() - start_time) * 1000)
+
+                if res.status_code == 404 and target_model != "openai/gpt-oss-120b":
+                    # Model not available in current account/tier, fallback to active default
+                    target_model = "openai/gpt-oss-120b"
+                    payload["model"] = target_model
+                    res = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
 
                 if res.status_code == 200:
                     data = res.json()

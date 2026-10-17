@@ -60,3 +60,5 @@ class TaskStateMachine:
         capped = min(max_seconds, exponential)
         jitter = random.uniform(0.1, 1.0)
         return round(capped + jitter, 2)
+
+    calculate_backoff_delay = calculate_backoff_seconds

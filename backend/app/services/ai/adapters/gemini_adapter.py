@@ -22,7 +22,7 @@ class GeminiAdapter(BaseAiAdapter):
     def __init__(self, config: AiProviderConfig):
         super().__init__(config)
         self.base_url = config.base_url.rstrip("/") or "https://generativelanguage.googleapis.com/v1beta"
-        self.default_model = "gemini-1.5-flash"
+        self.default_model = "gemini-flash-latest"
 
     async def test_connection(self) -> Tuple[bool, str, int]:
         if not self.config.api_key:
@@ -94,6 +94,12 @@ class GeminiAdapter(BaseAiAdapter):
             async with httpx.AsyncClient(timeout=timeout) as client:
                 res = await client.post(url, json=payload)
                 duration_ms = int((time.time() - start_time) * 1000)
+
+                if res.status_code == 404 and target_model != "gemini-flash-latest":
+                    # Fallback to active latest model
+                    target_model = "gemini-flash-latest"
+                    fallback_url = f"{self.base_url}/models/gemini-flash-latest:generateContent?key={self.config.api_key}"
+                    res = await client.post(fallback_url, json=payload)
 
                 if res.status_code == 200:
                     data = res.json()

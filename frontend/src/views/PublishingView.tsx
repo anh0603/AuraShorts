@@ -30,6 +30,7 @@ export const PublishingView: React.FC = () => {
   const [approvalMode, setApprovalMode] = useState<'SEMI_AUTO' | 'FULL_AUTO'>('SEMI_AUTO');
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'PENDING_APPROVAL' | 'SCHEDULED' | 'PUBLISHED' | 'REJECTED'>('ALL');
   const [reconcilingId, setReconcilingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [testingAccId, setTestingAccId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -282,20 +283,61 @@ export const PublishingView: React.FC = () => {
   };
 
   // Reconcile API Status
-  const handleReconcile = (id: string) => {
+  const handleReconcile = async (id: string) => {
     setReconcilingId(id);
     showToast(`Đang đối chiếu trạng thái từ API nền tảng cho tác vụ ${id}...`);
-
-    setTimeout(() => {
+    try {
+      const res = await PublishingApi.reconcilePost(id);
+      if (res.success && res.data) {
+        setQueueItems(prev => prev.map(item => {
+          if (item.id === id) {
+            return {
+              ...item,
+              status: (res.data.status || 'PUBLISHED') as any,
+              post_url: res.data.post_url || item.post_url,
+              external_post_id: res.data.external_post_id || item.external_post_id
+            };
+          }
+          return item;
+        }));
+        showToast(res.data.message || "Đối soát thành công! Bài đăng đã được xác nhận tiếp nhận an toàn.");
+      } else {
+        showToast("Đối soát thất bại: " + (res.error?.message || ""));
+      }
+    } catch {
+      showToast("Lỗi khi kết nối đối soát API.");
+    } finally {
       setReconcilingId(null);
-      setQueueItems(prev => prev.map(item => {
-        if (item.id === id) {
-          return { ...item, status: 'PUBLISHED', post_url: 'https://youtube.com/shorts/verified_demo' };
-        }
-        return item;
-      }));
-      showToast("Đối soát thành công! Bài đăng đã được xác nhận tiếp nhận an toàn.");
-    }, 1200);
+    }
+  };
+
+  // Instant Publish to Platform (YouTube Shorts)
+  const handlePublishNow = async (id: string) => {
+    setPublishingId(id);
+    showToast(`Đang đẩy video ${id} lên kênh YouTube Shorts...`);
+    try {
+      const res = await PublishingApi.publishNow(id);
+      if (res.success && res.data) {
+        setQueueItems(prev => prev.map(item => {
+          if (item.id === id) {
+            return {
+              ...item,
+              status: 'PUBLISHED',
+              post_url: res.data.post_url,
+              external_post_id: res.data.external_post_id
+            };
+          }
+          return item;
+        }));
+        showToast(res.data.message || `Đã xuất bản thành công! ${res.data.post_url}`);
+      } else {
+        showToast(res.error?.message || "Xuất bản thất bại.");
+      }
+    } catch {
+      showToast("Lỗi khi gọi API xuất bản.");
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   // Generate Metadata via AI Router
@@ -728,6 +770,18 @@ export const PublishingView: React.FC = () => {
                             >
                               <X className="w-3 h-3" />
                               <span>Từ Chối</span>
+                            </button>
+                          </div>
+                        ) : (item.status === 'APPROVED' || item.status === 'SCHEDULED') ? (
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              onClick={() => handlePublishNow(item.id)}
+                              disabled={publishingId === item.id}
+                              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
+                              title="Xuất bản ngay lên kênh YouTube Shorts"
+                            >
+                              <Send className={`w-3 h-3 ${publishingId === item.id ? 'animate-bounce' : ''}`} />
+                              <span>{publishingId === item.id ? 'Đang Đăng...' : 'Đăng Ngay'}</span>
                             </button>
                           </div>
                         ) : item.status === 'PUBLISH_RESULT_UNKNOWN' ? (

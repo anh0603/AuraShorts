@@ -33,15 +33,34 @@ async def create_plan(
     Creates an autonomous DAG plan from an article URL or topic.
     Idempotent: if plan with same source_url already exists and is active/completed, returns it.
     """
-    # 1. Idempotency Check
-    existing_plan = OrchestrationRepository.find_plan_by_source_url(request.source_url, db)
-    if existing_plan:
-        plan_data = _serialize_plan(existing_plan)
-        return ApiResponse(
-            success=True,
-            data=plan_data,
-            error=None
-        )
+    # 1. Idempotency Check (only if fresh run not requested and no custom scenes provided)
+    if not request.force_fresh and not request.scenes:
+        existing_plan = OrchestrationRepository.find_plan_by_source_url(request.source_url, db)
+        if existing_plan:
+            if existing_plan.status == PlanStatus.COMPLETED:
+                plan_data = _serialize_plan(existing_plan)
+                return ApiResponse(
+                    success=True,
+                    data=plan_data,
+                    error=None
+                )
+            elif existing_plan.status in (PlanStatus.RUNNING, PlanStatus.PAUSED):
+                plan_data = _serialize_plan(existing_plan)
+                return ApiResponse(
+                    success=True,
+                    data=plan_data,
+                    error=None
+                )
+            elif existing_plan.status == PlanStatus.PENDING:
+                if request.auto_start:
+                    background_tasks.add_task(pipeline_runner.run_plan, existing_plan.id)
+                plan_data = _serialize_plan(existing_plan)
+                return ApiResponse(
+                    success=True,
+                    data=plan_data,
+                    error=None
+                )
+            # If existing_plan was FAILED or CANCELLED, allow creating a fresh plan below
 
     # 2. Decompose Goal into DAG
     try:
@@ -49,7 +68,9 @@ async def create_plan(
             source_url=request.source_url,
             target_duration=request.target_duration_seconds,
             niche=request.niche,
-            aspect_ratio=request.aspect_ratio
+            aspect_ratio=request.aspect_ratio,
+            scenes=request.scenes,
+            voice_id=request.voice_id
         )
     except Exception as e:
         raise HTTPException(
@@ -257,6 +278,7 @@ def _serialize_plan(plan) -> dict:
         })
 
     return {
+        "id": plan.id,
         "plan_id": plan.id,
         "plan_type": plan.plan_type,
         "status": plan.status.value,

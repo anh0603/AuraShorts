@@ -99,6 +99,8 @@ export const OrchestratorApi = {
     niche?: string;
     aspect_ratio?: string;
     auto_start?: boolean;
+    scenes?: any[];
+    force_fresh?: boolean;
   }): Promise<ApiResponse<ApiPlanDetail>> {
     return request<ApiPlanDetail>('/orchestrator/plans', {
       method: 'POST',
@@ -224,7 +226,9 @@ export interface ApiPostQueueItem {
   scheduled_time: string;
   status: 'PENDING_APPROVAL' | 'APPROVED' | 'SCHEDULED' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED' | 'REJECTED' | 'PUBLISH_RESULT_UNKNOWN';
   idempotency_key: string;
+  external_post_id?: string;
   post_url?: string;
+  posted_time?: string;
   error_message?: string;
   created_at?: string;
 }
@@ -314,6 +318,36 @@ export const PublishingApi = {
     });
   },
 
+  async publishNow(id: string): Promise<ApiResponse<{
+    success: boolean;
+    status: string;
+    post_url: string;
+    external_post_id: string;
+    latency_ms: number;
+    message: string;
+  }>> {
+    return request<any>(`/publishing/${id}/publish-now`, {
+      method: 'POST',
+    });
+  },
+
+  async reconcilePost(id: string): Promise<ApiResponse<{
+    is_reconciled: boolean;
+    found_on_platform: boolean;
+    external_post_id?: string;
+    post_url?: string;
+    status: string;
+    message: string;
+  }>> {
+    return request<any>(`/publishing/${id}/reconcile`, {
+      method: 'POST',
+    });
+  },
+
+  async getAttempts(id: string): Promise<ApiResponse<any[]>> {
+    return request<any[]>(`/publishing/${id}/attempts`);
+  },
+
   async generateMetadata(payload: {
     title: string;
     content_summary?: string;
@@ -347,6 +381,17 @@ export const TrendsApi = {
     return request<ApiTrendItem[]>(`/trends${query}`);
   },
 
+  async getTrendsRadarStatus(): Promise<ApiResponse<{
+    last_synced_at: string;
+    next_refresh_seconds: number;
+    ttl_seconds: number;
+    scanned_sources_count: number;
+    total_topics_today: number;
+    filtered_count: number;
+  }>> {
+    return request<any>('/trends/status');
+  },
+
   async scanTrends(): Promise<ApiResponse<{ scanned_sources: number; new_trends_found: number; message: string }>> {
     return request<any>('/trends/scan', {
       method: 'POST',
@@ -365,15 +410,153 @@ export const TrendsApi = {
   },
 };
 
+export interface ApiVoiceItem {
+  id: string;
+  name: string;
+  gender: 'male' | 'female';
+  voice_id: string;
+  rate: string;
+  pitch: string;
+  accent: string;
+  badge: string;
+  description: string;
+}
+
 export const StudioApi = {
-  getRenderedVideoUrl(): string {
-    const backendHost = API_BASE_URL.replace('/api/v1', '');
+  getBackendBaseUrl(): string {
+    return API_BASE_URL.replace('/api/v1', '');
+  },
+
+  getRenderedVideoUrl(projectId?: string): string {
+    const backendHost = this.getBackendBaseUrl();
+    if (projectId) {
+      const sanitized = projectId.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 40);
+      return `${backendHost}/storage/artifacts/rendered_${sanitized}.mp4`;
+    }
     return `${backendHost}/storage/artifacts/rendered_short_1080x1920.mp4`;
   },
-  getVoiceoverAudioUrl(): string {
-    const backendHost = API_BASE_URL.replace('/api/v1', '');
+
+  getVoiceoverAudioUrl(projectId?: string): string {
+    const backendHost = this.getBackendBaseUrl();
+    if (projectId) {
+      const sanitized = projectId.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 40);
+      return `${backendHost}/storage/artifacts/voiceover_${sanitized}.mp3`;
+    }
     return `${backendHost}/storage/artifacts/voiceover_neural.mp3`;
   },
+
+  async getVoices(): Promise<ApiResponse<ApiVoiceItem[]>> {
+    return request<ApiVoiceItem[]>('/studio/voices');
+  },
+
+  async synthesizeVoice(payload: {
+    project_id?: string;
+    text?: string;
+    scenes?: any[];
+    voice_id?: string;
+    voice_preset_id?: string;
+    rate?: string;
+    pitch?: string;
+  }): Promise<ApiResponse<{
+    audio_url: string;
+    global_audio_url: string;
+    duration_seconds: number;
+    word_count: number;
+    voice_id: string;
+    rate: string;
+    pitch: string;
+    project_id: string;
+  }>> {
+    return request<any>('/studio/synthesize-voice', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async renderVideo(payload: {
+    project_id: string;
+    title?: string;
+    scenes: any[];
+    voice_id?: string;
+    voice_preset_id?: string;
+    subtitle_mode?: string;
+    template?: string;
+    account_id?: string;
+    scheduled_time?: string;
+  }): Promise<ApiResponse<{
+    video_url: string;
+    global_video_url: string;
+    audio_url: string;
+    duration_seconds: number;
+    scenes_count: number;
+    project_id: string;
+    voice_id: string;
+    quality_audit?: any;
+  }>> {
+    return request<any>('/studio/render-video', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
+
+export interface ApiExportedVideo {
+  id: string;
+  project_id: string;
+  title: string;
+  status: 'RENDERING' | 'READY' | 'SCHEDULED' | 'PUBLISHED' | 'CLEANED_UP' | 'FAILED' | 'PENDING_APPROVAL';
+  raw_status?: string;
+  progress_percent: number;
+  current_step: string;
+  video_url: string | null;
+  duration_seconds: number | null;
+  file_size_mb: number;
+  file_exists: boolean;
+  is_cleaned_up: boolean;
+  account: {
+    id: string;
+    account_name: string;
+    platform: string;
+  } | null;
+  scheduled_time: string | null;
+  posted_time: string | null;
+  post_url: string | null;
+  cleanup_time: string | null;
+  remaining_cleanup_seconds: number | null;
+  created_at: string | null;
+}
+
+export const ExportedVideosApi = {
+  async getExportedVideos(): Promise<ApiResponse<ApiExportedVideo[]>> {
+    return request<ApiExportedVideo[]>('/exported-videos');
+  },
+
+  async publishNow(id: string): Promise<ApiResponse<any>> {
+    return request<any>(`/exported-videos/${id}/publish-now`, {
+      method: 'POST',
+    });
+  },
+
+  async updateSchedule(id: string, payload: { account_id?: string; scheduled_time?: string }): Promise<ApiResponse<any>> {
+    return request<any>(`/exported-videos/${id}/schedule`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteVideo(id: string): Promise<ApiResponse<any>> {
+    return request<any>(`/exported-videos/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async triggerTick(): Promise<ApiResponse<any>> {
+    return request<any>('/exported-videos/trigger-tick', {
+      method: 'POST',
+    });
+  },
+};
+
+
 
 

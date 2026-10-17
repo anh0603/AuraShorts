@@ -104,6 +104,18 @@ export interface StoryboardScene {
   };
 }
 
+export interface VoiceOption {
+  id: string;
+  name: string;
+  gender: 'male' | 'female';
+  voice_id: string;
+  rate: string;
+  pitch: string;
+  accent: string;
+  badge: string;
+  description: string;
+}
+
 export interface VideoProject {
   id: string;
   title: string;
@@ -114,6 +126,10 @@ export interface VideoProject {
   created_at: string;
   scenes_count: number;
   scenes: StoryboardScene[];
+  video_url?: string;
+  audio_url?: string;
+  voice_id?: string;
+  voice_preset_id?: string;
 }
 
 export interface AiModel {
@@ -141,6 +157,9 @@ export interface AiProvider {
   last_health_check: string;
   latency_ms: number;
   quota_info: string;
+  has_api_key?: boolean;
+  masked_api_key?: string;
+  last_error_message?: string;
   models: AiModel[];
 }
 

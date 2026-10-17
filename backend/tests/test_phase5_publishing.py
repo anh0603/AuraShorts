@@ -182,6 +182,17 @@ class TestPhase5SocialAndPublishing(unittest.TestCase):
         get_res = self.client.get(f"/api/v1/social/accounts/{acc_id}")
         self.assertEqual(get_res.status_code, 404)
 
+    @classmethod
+    def tearDownClass(cls):
+        with SessionLocal() as db:
+            from app.db.models import SocialAccountModel, PostQueueModel, PublishingAttemptModel
+            test_accs = db.query(SocialAccountModel).filter(
+                SocialAccountModel.external_account_id == "UC_khoahoctuonglai_test"
+            ).all()
+            for ta in test_accs:
+                db.delete(ta)
+            db.commit()
+
 
 if __name__ == "__main__":
     unittest.main()

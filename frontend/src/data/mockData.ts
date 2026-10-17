@@ -11,6 +11,10 @@ export const INITIAL_PROJECT: VideoProject = {
   status: 'WAITING_FOR_APPROVAL',
   current_stage: 'VALIDATE_ARTIFACT',
   created_at: '2026-10-15 15:30',
+  video_url: '/storage/artifacts/rendered_short_1080x1920.mp4',
+  audio_url: '/storage/artifacts/voiceover_neural.mp3',
+  voice_id: 'vi-VN-NamMinhNeural',
+  voice_preset_id: 'vi-VN-NamMinhNeural-news',
   scenes_count: 12,
   scenes: [
     {

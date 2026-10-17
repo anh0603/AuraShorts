@@ -31,20 +31,28 @@ class OrchestratorEngine:
         source_url: str, 
         target_duration: int = 60, 
         niche: str = "tech",
-        aspect_ratio: str = "9:16"
+        aspect_ratio: str = "9:16",
+        scenes: Optional[List[Dict[str, Any]]] = None,
+        voice_id: Optional[str] = None
     ) -> OrchestrationPlan:
         """
         Decomposes a URL-to-Video Goal into a full 8-task DAG with explicit dependencies.
         """
+        context_metadata = {
+            "source_url": source_url,
+            "target_duration": target_duration,
+            "niche": niche,
+            "aspect_ratio": aspect_ratio
+        }
+        if scenes:
+            context_metadata["scenes"] = scenes
+        if voice_id:
+            context_metadata["voice_id"] = voice_id
+
         plan = OrchestrationPlan(
             plan_type="URL_TO_VIDEO",
             status=PlanStatus.PENDING,
-            context_metadata={
-                "source_url": source_url,
-                "target_duration": target_duration,
-                "niche": niche,
-                "aspect_ratio": aspect_ratio
-            }
+            context_metadata=context_metadata
         )
 
         plan_id = plan.id
@@ -58,7 +66,7 @@ class OrchestratorEngine:
             task_type="CRAWL_SOURCE",
             priority=1,
             idempotency_key=f"idem-crawl-{base_hash}",
-            input_payload={"source_url": source_url},
+            input_payload={"source_url": source_url, "plan_id": plan_id},
             dependencies=[]
         )
 
@@ -70,10 +78,19 @@ class OrchestratorEngine:
             task_type="EXTRACT_FACTS",
             priority=2,
             idempotency_key=f"idem-facts-{base_hash}",
+            input_payload={"plan_id": plan_id},
             dependencies=[t1.id]
         )
 
         # Task 3: Script Generation
+        script_input: Dict[str, Any] = {
+            "target_duration": target_duration,
+            "niche": niche,
+            "plan_id": plan_id
+        }
+        if scenes:
+            script_input["scenes"] = scenes
+
         t3 = OrchestrationTask(
             id=f"task-script-{base_hash}",
             plan_id=plan_id,
@@ -81,11 +98,15 @@ class OrchestratorEngine:
             task_type="GENERATE_SCRIPT",
             priority=3,
             idempotency_key=f"idem-script-{base_hash}",
-            input_payload={"target_duration": target_duration, "niche": niche},
+            input_payload=script_input,
             dependencies=[t2.id]
         )
 
         # Task 4A: TTS Voiceover (Parallel branch A)
+        tts_input: Dict[str, Any] = {"plan_id": plan_id}
+        if voice_id:
+            tts_input["voice_id"] = voice_id
+
         t4a = OrchestrationTask(
             id=f"task-tts-{base_hash}",
             plan_id=plan_id,
@@ -93,6 +114,7 @@ class OrchestratorEngine:
             task_type="TTS_AUDIO",
             priority=4,
             idempotency_key=f"idem-tts-{base_hash}",
+            input_payload=tts_input,
             dependencies=[t3.id]
         )
 
@@ -104,6 +126,7 @@ class OrchestratorEngine:
             task_type="SEARCH_MEDIA",
             priority=4,
             idempotency_key=f"idem-media-{base_hash}",
+            input_payload={"plan_id": plan_id},
             dependencies=[t3.id]
         )
 
@@ -115,6 +138,7 @@ class OrchestratorEngine:
             task_type="ALIGN_AUDIO",
             priority=5,
             idempotency_key=f"idem-align-{base_hash}",
+            input_payload={"plan_id": plan_id},
             dependencies=[t4a.id]
         )
 
@@ -126,6 +150,7 @@ class OrchestratorEngine:
             task_type="VERIFY_RIGHTS",
             priority=5,
             idempotency_key=f"idem-rights-{base_hash}",
+            input_payload={"plan_id": plan_id},
             dependencies=[t4b.id]
         )
 
@@ -137,6 +162,7 @@ class OrchestratorEngine:
             task_type="RENDER_FFMPEG",
             priority=6,
             idempotency_key=f"idem-render-{base_hash}",
+            input_payload={"plan_id": plan_id, "aspect_ratio": aspect_ratio},
             dependencies=[t5a.id, t5b.id]
         )
 

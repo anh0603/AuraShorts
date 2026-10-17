@@ -19,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   const getTabTitle = (tab: string) => {
     switch(tab) {
       case 'dashboard': return { title: 'Bảng Điều Khiển Tổng Quan', sub: 'Giám sát pipeline sản xuất video và trạng thái AI Router' };
+      case 'exported-videos': return { title: 'Quản Lý Video Đã Xuất & Lịch Đăng YouTube', sub: 'Theo dõi tiến trình render, xem lại video 9:16, tự động đăng kênh YouTube và tự động dọn dẹp file sau 1h' };
       case 'url-to-video': return { title: 'Tạo Kịch Bản Từ Link Bài Báo (Thủ Công)', sub: 'Dán link báo để AI trích xuất dữ kiện và tạo kịch bản 9:16' };
       case 'studio': return { title: 'Video Studio 9:16', sub: 'Biên tập phân cảnh, xem trước phụ đề Karaoke và render video' };
       case 'ai-providers': return { title: 'AI Provider Manager', sub: 'Quản trị mô hình AI, định tuyến tự động và kiểm soát Quota 0đ' };

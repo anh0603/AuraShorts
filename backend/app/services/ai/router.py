@@ -6,6 +6,7 @@ Ref: PROJECT.md Section V, Section XXV & docs/ARCHITECTURE.md
 import os
 import json
 import time
+import asyncio
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -167,15 +168,28 @@ class AiRouter:
     def save_persisted_config(self):
         """Saves current provider configs securely to storage."""
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        # Preserve existing valid keys from storage if in-memory has empty string
+        existing_keys = {}
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    old_data = json.load(f)
+                    for op in old_data.get("providers", []):
+                        if op.get("api_key"):
+                            existing_keys[op["id"]] = op["api_key"]
+            except Exception:
+                pass
+
         try:
             data = {"providers": []}
             for p in self.providers.values():
+                key_to_save = p.api_key if p.api_key else existing_keys.get(p.id, "")
                 data["providers"].append({
                     "id": p.id,
                     "name": p.name,
                     "provider_type": p.provider_type.value,
                     "base_url": p.base_url,
-                    "api_key": p.api_key,
+                    "api_key": key_to_save,
                     "status": p.status.value,
                     "priority": p.priority,
                     "is_free_confirmed": p.is_free_confirmed
@@ -268,10 +282,14 @@ class AiRouter:
         for provider in candidates:
             adapter = self.get_adapter(provider)
             try:
-                content, usage = await adapter.generate_text(
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    json_schema=json_schema
+                content, usage = await asyncio.wait_for(
+                    adapter.generate_text(
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        json_schema=json_schema,
+                        timeout=8.0
+                    ),
+                    timeout=9.0
                 )
 
                 # Success: reset circuit breaker
@@ -325,37 +343,98 @@ class AiRouter:
         Produces clean, deterministic Vietnamese structured output
         when offline or testing without live API keys.
         """
+        import re
         if json_schema or "script" in prompt.lower() or "kịch bản" in prompt.lower():
+            inferred_title = "Tiêu điểm tin tức hôm nay"
+            if "Tiêu đề:" in prompt:
+                t_match = prompt.split("Tiêu đề:")[-1].split("\n")[0].strip()
+                if t_match and len(t_match) > 5:
+                    inferred_title = t_match
+
+            # Detect required scene count
+            num_scenes = 10
+            sc_m = re.search(r'(\d+)\s*phân cảnh', prompt)
+            if sc_m:
+                num_scenes = max(4, min(16, int(sc_m.group(1))))
+            else:
+                dur_m = re.search(r'(\d+)\s*giây', prompt)
+                if dur_m:
+                    d_sec = int(dur_m.group(1))
+                    num_scenes = 5 if d_sec <= 35 else (14 if d_sec > 70 else 10)
+
+            # Extract claims from prompt if present
+            extracted_claims = []
+            if "Luận điểm chính:" in prompt:
+                raw_claims_part = prompt.split("Luận điểm chính:")[-1].split("Thời lượng yêu cầu:")[0].strip()
+                try:
+                    import ast
+                    parsed_claims = ast.literal_eval(raw_claims_part)
+                    if isinstance(parsed_claims, list):
+                        extracted_claims = [str(c).strip() for c in parsed_claims if str(c).strip()]
+                except Exception:
+                    clean_part = re.sub(r"[\[\]'\"]", "", raw_claims_part)
+                    extracted_claims = [c.strip() for c in clean_part.split(",") if len(c.strip()) > 8]
+
+            # Construct factual scenes faithfully preserving user's topic and claims
+            scenes = []
+            # 1. Hook
+            hook_text = f"Nóng: {inferred_title}! Thông tin chính thức vừa được công bố thu hút sự chú ý đặc biệt."
+            scenes.append({
+                "scene_id": 1,
+                "type": "hook",
+                "text": hook_text,
+                "estimated_duration_seconds": round(max(4.5, (len(hook_text.split()) / 2.8) + 0.4), 1),
+                "visual_prompt": f"Tiêu điểm tin tức: {inferred_title}, đồ họa dọc 9:16 sắc nét"
+            })
+
+            # 2. Body scenes covering all claims and factual facets without looping
+            needed_body = max(1, num_scenes - 2)
+            body_facets = []
+            for c in extracted_claims:
+                if c not in body_facets:
+                    body_facets.append(c)
+
+            # Contextual expansions if claims are fewer than needed scenes
+            expansion_templates = [
+                f"Sự việc đang nhận được sự quan tâm và theo dõi sát sao từ các cơ quan chuyên môn.",
+                f"Các bên liên quan đang khẩn trương triển khai các biện pháp đồng bộ theo đúng quy định.",
+                f"Thông tin xác thực đã được rà soát kỹ lưỡng nhằm mang lại góc nhìn minh bạch, đa chiều.",
+                f"Diễn biến này được đánh giá sẽ tạo tiền đề quan trọng cho các hoạt động tiếp theo.",
+                f"Cộng đồng và dư luận tiếp tục thảo luận sôi nổi về các khía cạnh liên quan của sự việc.",
+                f"Mọi thông báo cập nhật mới nhất sẽ được thông tin kịp thời tới đông đảo công chúng."
+            ]
+            for exp in expansion_templates:
+                if len(body_facets) >= needed_body:
+                    break
+                if exp not in body_facets:
+                    body_facets.append(exp)
+
+            for i in range(needed_body):
+                b_text = body_facets[i] if i < len(body_facets) else f"Chi tiết phân tích bổ sung về {inferred_title}."
+                w_count = max(1, len(b_text.split()))
+                scenes.append({
+                    "scene_id": len(scenes) + 1,
+                    "type": f"body_{i + 1}",
+                    "text": b_text,
+                    "estimated_duration_seconds": round(max(4.2, (w_count / 2.8) + 0.4), 1),
+                    "visual_prompt": f"Hình ảnh tư liệu thực tế phân cảnh {i + 1}: {inferred_title}"
+                })
+
+            # 3. Final Call to Action (Single CTA scene, never duplicated)
+            cta_text = f"Bạn nghĩ sao về thông tin này? Hãy để lại bình luận và bấm đăng ký kênh theo dõi để cập nhật tin mới nhất nhé!"
+            scenes.append({
+                "scene_id": len(scenes) + 1,
+                "type": "cta",
+                "text": cta_text,
+                "estimated_duration_seconds": round(max(4.5, (len(cta_text.split()) / 2.8) + 0.4), 1),
+                "visual_prompt": "Đồ họa nút đăng ký chuông thông báo kênh tin tức sắc nét 9:16"
+            })
+
             fallback_dict = {
-                "title": "Bí mật công nghệ pin thể rắn cho xe điện di chuyển 1000km",
+                "title": inferred_title,
                 "aspect_ratio": "9:16",
-                "target_duration_seconds": 60,
-                "scenes": [
-                    {
-                        "scene_id": 1,
-                        "type": "hook",
-                        "text": "Bạn có tin không? Mẫu xe điện này có thể chạy một ngàn cây số chỉ với một lần sạc duy nhất!",
-                        "visual_prompt": "Futuristic cyan electric supercar speeding through rain-slick neon highway, 9:16 vertical ratio."
-                    },
-                    {
-                        "scene_id": 2,
-                        "type": "body_1",
-                        "text": "Bí mật nằm ở chất điện phân thể rắn, hoàn toàn loại bỏ nguy cơ cháy nổ nguy hiểm.",
-                        "visual_prompt": "3D transparent animation of solid-state ceramic battery cells glowing with clean electric pulses."
-                    },
-                    {
-                        "scene_id": 3,
-                        "type": "body_2",
-                        "text": "Không những vậy, thời gian nạp đầy năng lượng chỉ vỏn vẹn đúng mười hai phút đồng hồ.",
-                        "visual_prompt": "Modern charging station ultra-fast digital countdown display clock reaching 100%."
-                    },
-                    {
-                        "scene_id": 4,
-                        "type": "cta",
-                        "text": "Hãy bấm theo dõi kênh ngay hôm nay để đón đầu những xu hướng công nghệ tương lai!",
-                        "visual_prompt": "Sleek animated subscribe pulse button with modern sound wave ripple background."
-                    }
-                ]
+                "target_duration_seconds": 60 if num_scenes >= 8 else 30,
+                "scenes": scenes
             }
             return json.dumps(fallback_dict, ensure_ascii=False), {
                 "provider_id": "prov-deterministic-engine",
@@ -367,10 +446,24 @@ class AiRouter:
                 "is_fallback": True
             }
         else:
-            claims = [
-                "Pin thể rắn giúp xe điện di chuyển quãng đường hơn 1000km sau một lần sạc.",
-                "Loại bỏ nguy cơ cháy nổ nhờ thay thế chất điện phân lỏng bằng chất điện phân rắn.",
-                "Công nghệ sạc nhanh đạt 80% chỉ trong 12 phút giúp tối ưu thời gian di chuyển."
+            extracted_sentences = []
+            if "Nội dung:" in prompt:
+                content_part = prompt.split("Nội dung:")[-1]
+                raw_sentences = [
+                    s.strip() for s in re.split(r'[\.\n]+', content_part)
+                    if len(s.strip()) > 20 and not any(s.strip().startswith(prefix) for prefix in ["Ảnh:", "Video:", "Theo ", "Nguồn:", "Xem thêm:"])
+                ]
+                extracted_sentences = [f"{s}." if not s.endswith('.') else s for s in raw_sentences[:4]]
+
+            if not extracted_sentences and "Tiêu đề:" in prompt:
+                t_part = prompt.split("Tiêu đề:")[-1].split("\n")[0].strip()
+                if t_part:
+                    extracted_sentences = [f"Thông tin quan sát: {t_part}."]
+
+            claims = extracted_sentences or [
+                "Sự kiện đang thu hút sự quan tâm lớn của cộng đồng.",
+                "Cơ quan chức năng đã vào cuộc xác minh và thông tin chính thức.",
+                "Nội dung bài viết phản ánh diễn biến thực tế được dư luận chú ý."
             ]
             return json.dumps({"claims": claims}, ensure_ascii=False), {
                 "provider_id": "prov-deterministic-engine",

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quy Trình Tự Động Hóa Sản Xuất & Xuất Bản Video</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    .slide { display: none; }
+    .slide.active { display: block; animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-3 sm:p-5 font-sans">
+  <div class="max-w-4xl mx-auto bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[600px]">
+    
+    <!-- Top Header & Progress -->
+    <header class="p-5 border-b border-[var(--border)] bg-[var(--card)]/90 backdrop-blur flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-lg">
+          ⚡
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-[var(--foreground)]">Cơ Chế Hoạt Động Tự Động Hóa Làm Video & Đăng Bài</h1>
+          <p class="text-xs text-[var(--muted-foreground)]">Kiến trúc chi tiết luồng xử lý từ Tin tức / URL đến Kênh YouTube Shorts</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="slideIndicator" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)]">1 / 5</span>
+      </div>
+    </header>
+
+    <!-- Progress Bar -->
+    <div class="w-full bg-[var(--border)] h-1.5 overflow-hidden">
+      <div id="progressBar" class="bg-gradient-to-r from-indigo-500 via-cyan-500 to-red-500 h-full transition-all duration-300" style="width: 20%"></div>
+    </div>
+
+    <!-- Slides Container -->
+    <main class="p-6 sm:p-8 flex-1 overflow-y-auto">
+
+      <!-- SLIDE 1: TOÀN CẢNH PIPELINE TỰ ĐỘNG HÓA -->
+      <section id="slide-1" class="slide active space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-xs font-semibold border border-indigo-500/20">
+          <span>PHẦN 1 • TOÀN CẢNH DÒNG CHẢY HỆ THỐNG</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Từ Đường Dẫn Báo Chí Đến Video Trên Kênh Trong 3 Phút</h2>
+        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          Hệ thống được thiết kế dạng <strong>State Machine Pipeline (Cỗ máy trạng thái)</strong> 8 giai đoạn khép kín, hoạt động tự động hoàn toàn mà không cần can thiệp thủ công:
+        </p>
+
+        <!-- Pipeline Flowchart -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div class="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--background)] flex flex-col justify-between space-y-2">
+            <span class="text-xs font-bold text-cyan-400">1. THU THẬP</span>
+            <p class="text-xs text-[var(--foreground)] font-semibold">Crawl Báo / Trends</p>
+            <span class="text-[11px] text-[var(--muted-foreground)]">Lọc rác menu, lấy ảnh gốc</span>
+          </div>
+
+          <div class="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--background)] flex flex-col justify-between space-y-2">
+            <span class="text-xs font-bold text-indigo-400">2. BIÊN TẬP AI</span>
+            <p class="text-xs text-[var(--foreground)] font-semibold">Trích Sự Kiện & Kịch Bản</p>
+            <span class="text-[11px] text-[var(--muted-foreground)]">10 cảnh 60s, đủ chủ vị</span>
+          </div>
+
+          <div class="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--background)] flex flex-col justify-between space-y-2">
+            <span class="text-xs font-bold text-amber-400">3. AUDIO & VISUAL</span>
+            <p class="text-xs text-[var(--foreground)] font-semibold">Giọng Đọc & Đồ Họa 9:16</p>
+            <span class="text-[11px] text-[var(--muted-foreground)]">Đồng bộ từ, layout nền mờ</span>
+          </div>
+
+          <div class="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--background)] flex flex-col justify-between space-y-2">
+            <span class="text-xs font-bold text-red-400">4. XUẤT BẢN</span>
+            <p class="text-xs text-[var(--foreground)] font-semibold">Kiểm Định & Đăng Kênh</p>
+            <span class="text-[11px] text-[var(--muted-foreground)]">Lịch phát sóng YouTube</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-400 text-sm">⏱️</span>
+            <span class="text-[var(--foreground)] font-medium">Thời gian hoàn thành trọn gói: <strong>~90 đến 120 giây</strong> cho 1 video 60s chuẩn Full HD 1080x1920.</span>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[11px]">Auto Pipeline</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: BƯỚC 1 - 3: THU THẬP & BIÊN KỊCH -->
+      <section id="slide-2" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 text-xs font-semibold border border-cyan-500/20">
+          <span>PHẦN 2 • TÌM TIN & BIÊN KỊCH THÔNG MINH</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Trích Xuất Sự Thật Cốt Lõi & Viết Kịch Bản Giữ Chân</h2>
+        
+        <div class="space-y-3.5">
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-1.5">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-cyan-400">Bước 1: Quét Tin Tức & Khử Trùng Lặp (Deduplication)</h4>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 font-mono">Crawler</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              Trích xuất nội dung bài viết từ các đầu báo chính thống (Báo Tin Tức, Tuổi Trẻ, Dân Trí...). Tự động loại bỏ các đoạn quảng cáo, menu và khử trùng lặp giữa đoạn mô tả Sapo và đoạn 1 thân bài để câu chuyện không bị đọc lại 2 lần.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-1.5">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-indigo-400">Bước 2: Phân Tích Sự Kiện (Fact Extraction)</h4>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-mono">Fact Engine</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              AI bóc tách ra 5 đến 7 luận điểm/sự kiện cốt lõi độc lập. Mọi thông tin đều gắn với số liệu, nhân vật, bối cảnh thực tế trong bài viết, ngăn chặn hiện tượng bịa đặt thông tin (Anti-Hallucination).
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-1.5">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-amber-400">Bước 3: Biên Kịch 10 Phân Cảnh (Scene-by-Scene Script)</h4>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono">AI Router</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              Tạo kịch bản chuẩn Shorts: Cảnh 1 có <strong>Hook giữ chân khán giả</strong> trong 3 giây đầu; các cảnh tiếp theo phát triển cao trào. <strong>Quy tắc ngữ pháp nghiêm ngặt:</strong> Câu được ngắt tự nhiên theo vế (`","`, `";"`, `"đồng thời"`), đủ chủ vị, kết thúc bằng dấu chấm, không bị cắt cụt lửng bằng `...`.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: BƯỚC 4 - 5: AUDIO & ĐỒ HỌA THÍCH ỨNG -->
+      <section id="slide-3" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-semibold border border-amber-500/20">
+          <span>PHẦN 3 • GIỌNG ĐỌC ĐỒNG BỘ & ĐỒ HỌA 9:16</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Âm Thanh Mili-giây & Khung Hình Cân Đối</h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2.5">
+            <h4 class="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+              <span class="text-amber-400">🎙️</span> Giọng Đọc Neural & Pacing Nhanh
+            </h4>
+            <ul class="text-xs text-[var(--muted-foreground)] space-y-2 leading-relaxed">
+              <li><strong>Nam Minh / Hoài My Neural:</strong> Giọng đọc truyền cảm, chuẩn tiếng Việt vùng miền.</li>
+              <li><strong>Cắt bỏ khoảng lặng chết (Tight Pacing):</strong> Tự động xén bỏ 1 giây dead air giữa các phân cảnh, chỉ giữ 0.17s nhịp thở tự nhiên. Nhịp video luôn dồn dập, cuốn hút.</li>
+              <li><strong>Neural Word Boundary:</strong> Thu nhận mốc thời gian từng từ để khóa thời lượng video ăn khớp 100%.</li>
+            </ul>
+          </div>
+
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2.5">
+            <h4 class="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+              <span class="text-cyan-400">🖼️</span> Bố Cục Thích Ứng (Adaptive Layout)
+            </h4>
+            <ul class="text-xs text-[var(--muted-foreground)] space-y-2 leading-relaxed">
+              <li><strong>Ưu tiên ảnh báo chí thực:</strong> Tải và gán ảnh phóng viên chụp hiện trường tương ứng cho từng phân cảnh.</li>
+              <li><strong>Lớp nền mờ Full-bleed:</strong> Ảnh ngang 16:9 được đặt sắc nét nguyên vẹn ở giữa, nền mờ hòa sắc phía sau. Không bị phóng to quá mức làm cắt mất bục phát biểu hay khuôn mặt.</li>
+              <li><strong>Chuyển động Ken Burns:</strong> Zoom nhẹ nhàng 25 FPS loại bỏ giật khung hình.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--card)] flex items-center justify-between text-xs">
+          <span class="text-[var(--foreground)]">Hiển thị huy hiệu tin tức trực tiếp:</span>
+          <span class="px-2.5 py-0.5 rounded-full bg-slate-900 text-cyan-400 border border-cyan-500/30 font-semibold text-[11px] flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> TIN NÓNG • THỜI SỰ 24H
+          </span>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: BƯỚC 6 - 7: SUBTITLES & KIỂM ĐỊNH -->
+      <section id="slide-4" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+          <span>PHẦN 4 • PHỤ ĐỀ KARAOKE & BẢO VỆ CHẤT LƯỢNG</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Phụ Đề Pop-in & Kiểm Định Tự Chữa Lành</h2>
+
+        <div class="space-y-3.5">
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-amber-300">Phụ Đề Karaoke Vàng Nổi Bật (CapCut / TikTok Style)</h4>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono">.ASS Subtitles</span>
+            </div>
+            <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+              Chữ vàng đậm (&H002EFFFF) viền đen dày, hiệu ứng bung nở (Pop-in Bounce) theo từng cụm 2–3 từ. Nhờ đồng bộ với Neural Word Boundary, phụ đề bật lên chính xác vào khoảnh khắc phát âm, tắt gọn gàng khi dứt câu, không nhảy trước chữ.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-emerald-400">Kiểm Soát Chất Lượng: 3 Tiêu Chí "LỆCH - THIẾU - SAI"</h4>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono">Quality Gates</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+              <div class="p-2.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                <span class="font-bold text-red-400">Chống LỆCH:</span>
+                <p class="text-[var(--muted-foreground)] text-[11px] mt-0.5">So sánh thời lượng video vs audio. Nếu lệch &gt; 0.04s, tự động cắt ghép lại để độ lệch = 0.00s.</p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                <span class="font-bold text-amber-400">Chống THIẾU:</span>
+                <p class="text-[var(--muted-foreground)] text-[11px] mt-0.5">Kiểm tra đủ 10 phân cảnh, âm thanh Stereo 44.1kHz, không có file nào bị 0 byte.</p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                <span class="font-bold text-cyan-400">Chống SAI:</span>
+                <p class="text-[var(--muted-foreground)] text-[11px] mt-0.5">Đo độ phân giải 1080x1920 chuẩn 9:16, quét loại bỏ toàn bộ khung hình đen hoặc lỗi codec.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: BƯỚC 8: XUẤT BẢN & PHÁT SÓNG -->
+      <section id="slide-5" class="slide space-y-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20">
+          <span>PHẦN 5 • TỰ ĐỘNG ĐĂNG KÊNH & LỊCH TRÌNH</span>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-[var(--foreground)]">Điều Phối Hàng Đợi & Lên Sóng Đa Kênh</h2>
+
+        <div class="p-5 rounded-xl border border-[var(--border)] bg-[var(--background)] space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+            <div>
+              <h4 class="text-sm font-bold text-[var(--foreground)]">Cơ Chế Phân Phối Video Lên YouTube Shorts</h4>
+              <p class="text-xs text-[var(--muted-foreground)]">Đảm bảo video lên sóng mượt mà, đúng người, đúng thời điểm</p>
+            </div>
+            <span class="px-2.5 py-1 rounded bg-red-600/20 text-red-400 font-bold text-xs border border-red-500/30">YouTube API v3</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] space-y-1">
+              <span class="font-bold text-emerald-400 flex items-center gap-1">
+                <span>🛡️</span> Khóa Chống Trùng (Idempotency)
+              </span>
+              <p class="text-[var(--muted-foreground)] text-[11px]">Mã hóa SHA-256 tiêu đề và thời gian. Khi bấm "Đăng Ngay" nhiều lần hoặc mạng chập chờn, hệ thống chỉ xuất bản 1 lần duy nhất.</p>
+            </div>
+
+            <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] space-y-1">
+              <span class="font-bold text-cyan-400 flex items-center gap-1">
+                <span>🔄</span> Đối Soát An Toàn (Reconciliation)
+              </span>
+              <p class="text-[var(--muted-foreground)] text-[11px]">Nếu rớt mạng khi đang gửi yêu cầu tới Google, nút "Đối Soát API" tự động kiểm tra kênh xem video đã được tiếp nhận an toàn chưa.</p>
+            </div>
+
+            <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] space-y-1">
+              <span class="font-bold text-indigo-400 flex items-center gap-1">
+                <span>⏰</span> Lịch Phát Sóng Khung Giờ Vàng
+              </span>
+              <p class="text-[var(--muted-foreground)] text-[11px]">Tự động xếp lịch vào 11:30, 18:00, 20:30 hàng ngày để thuật toán YouTube đề xuất lượng xem tối đa.</p>
+            </div>
+
+            <div class="p-3 rounded-lg bg-[var(--card)] border border-[var(--border)] space-y-1">
+              <span class="font-bold text-rose-400 flex items-center gap-1">
+                <span>⚡</span> Tùy Chọn "Đăng Ngay" Tức Thì
+              </span>
+              <p class="text-[var(--muted-foreground)] text-[11px]">Không muốn chờ lịch? Bấm nút "Đăng Ngay" màu đỏ trong hàng đợi, video sẽ lên sóng YouTube Shorts sau 5 giây.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Controls & Navigation -->
+    <footer class="p-4 sm:p-5 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur flex items-center justify-between">
+      <button id="prevBtn" class="px-4 py-2 rounded-xl bg-[var(--background)] hover:bg-[var(--border)] text-[var(--foreground)] font-medium text-xs border border-[var(--border)] transition disabled:opacity-40 disabled:cursor-not-allowed">
+        ← Phần Trước
+      </button>
+
+      <!-- Dots Indicators -->
+      <div class="flex items-center gap-2">
+        <button onclick="goToSlide(1)" class="dot w-2.5 h-2.5 rounded-full bg-indigo-500 transition-all"></button>
+        <button onclick="goToSlide(2)" class="dot w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+        <button onclick="goToSlide(3)" class="dot w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+        <button onclick="goToSlide(4)" class="dot w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+        <button onclick="goToSlide(5)" class="dot w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all"></button>
+      </div>
+
+      <button id="nextBtn" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition shadow-sm">
+        Tiếp Theo →
+      </button>
+    </footer>
+
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 5;
+
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const slideIndicator = document.getElementById('slideIndicator');
+    const progressBar = document.getElementById('progressBar');
+    const dots = document.querySelectorAll('.dot');
+
+    function updateSlide() {
+      for (let i = 1; i <= totalSlides; i++) {
+        const slide = document.getElementById(`slide-${i}`);
+        if (slide) {
+          if (i === currentSlide) {
+            slide.classList.add('active');
+          } else {
+            slide.classList.remove('active');
+          }
+        }
+      }
+
+      slideIndicator.textContent = `${currentSlide} / ${totalSlides}`;
+      progressBar.style.width = `${(currentSlide / totalSlides) * 100}%`;
+
+      dots.forEach((dot, index) => {
+        if (index + 1 === currentSlide) {
+          dot.className = "dot w-3 h-3 rounded-full bg-indigo-500 transition-all";
+        } else {
+          dot.className = "dot w-2.5 h-2.5 rounded-full bg-[var(--border)] transition-all";
+        }
+      });
+
+      prevBtn.disabled = currentSlide === 1;
+      if (currentSlide === totalSlides) {
+        nextBtn.textContent = 'Xem Lại Từ Đầu ↻';
+      } else {
+        nextBtn.textContent = 'Tiếp Theo →';
+      }
+    }
+
+    function goToSlide(n) {
+      if (n >= 1 && n <= totalSlides) {
+        currentSlide = n;
+        updateSlide();
+      }
+    }
+
+    prevBtn.addEventListener('click', () => {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      } else {
+        currentSlide = 1;
+        updateSlide();
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        if (currentSlide < totalSlides) { currentSlide++; updateSlide(); }
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        if (currentSlide > 1) { currentSlide--; updateSlide(); }
+      }
+    });
+
+    updateSlide();
+  </script>
+</body>
+</html>

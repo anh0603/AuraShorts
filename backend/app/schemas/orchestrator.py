@@ -25,6 +25,8 @@ class CreatePlanRequest(BaseModel):
     voice_id: str = Field(default="vi-VN-HoaiMyNeural")
     auto_start: bool = Field(default=True)
     require_human_approval: bool = Field(default=True)
+    scenes: Optional[List[Dict[str, Any]]] = None
+    force_fresh: bool = False
 
 
 class TaskItemResponse(BaseModel):

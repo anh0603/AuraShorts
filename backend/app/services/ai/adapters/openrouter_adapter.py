@@ -64,7 +64,7 @@ class OpenRouterAdapter(BaseAiAdapter):
         json_schema: Optional[Dict[str, Any]] = None,
         temperature: float = 0.7,
         max_tokens: int = 1500,
-        timeout: float = 30.0
+        timeout: float = 8.0
     ) -> Tuple[str, Dict[str, Any]]:
         if not self.config.api_key:
             raise AuthenticationError("Thiếu OpenRouter API Key trong cấu hình.", self.config.id)

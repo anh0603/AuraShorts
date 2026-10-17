@@ -257,7 +257,7 @@ class TestPhase6YouTubeAdapter(unittest.TestCase):
         self.assertEqual(res["status"], "PUBLISHED")
 
         # Verify attempt in DB
-        attempts = PublisherService.get_attempts("pq-service-01", self.db)
+        attempts = PublisherService.get_attempts(queue_id, self.db)
         self.assertGreaterEqual(len(attempts), 1)
         self.assertEqual(attempts[0]["request_status"], "SUCCESS")
         self.assertIsNotNone(attempts[0]["external_post_id"])
@@ -305,6 +305,18 @@ class TestPhase6YouTubeAdapter(unittest.TestCase):
         rec_data = rec_res.json()["data"]
         self.assertTrue(rec_data["found_on_platform"])
         self.assertEqual(rec_data["post_status"], "PUBLISHED")
+
+    @classmethod
+    def tearDownClass(cls):
+        with SessionLocal() as db:
+            test_accs = db.query(SocialAccountModel).filter(
+                (SocialAccountModel.account_name.in_(["Service Test Channel", "API Live Test Channel"])) |
+                (SocialAccountModel.external_account_id.like("%serv%")) |
+                (SocialAccountModel.external_account_id.like("%api_test%"))
+            ).all()
+            for ta in test_accs:
+                db.delete(ta)
+            db.commit()
 
 
 if __name__ == "__main__":

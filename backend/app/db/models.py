@@ -214,6 +214,7 @@ class PostQueueModel(Base):
     external_post_id = Column(String(128), nullable=True)
     status = Column(String(32), default="PENDING_APPROVAL", index=True)  # PENDING_APPROVAL, APPROVED, SCHEDULED, PUBLISHING, PUBLISHED, FAILED, REJECTED
     idempotency_key = Column(String(128), unique=True, nullable=False, index=True)
+    is_cleaned_up = Column(Boolean, default=False, nullable=True)
     
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
