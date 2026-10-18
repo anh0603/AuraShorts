@@ -18,9 +18,14 @@ import {
   Link2,
   Mic,
   Zap,
-  Cloud
+  Cloud,
+  Settings,
+  HardDrive,
+  ShieldCheck,
+  FolderPlus,
+  ArrowUpRight
 } from 'lucide-react';
-import { ExportedVideosApi, PublishingApi, type ApiExportedVideo, StudioApi } from '../services/api';
+import { ExportedVideosApi, PublishingApi, type ApiExportedVideo, StudioApi, GDriveApi, type GDriveStatus } from '../services/api';
 
 const Youtube: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -58,6 +63,15 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
   const [createCustomDateTime, setCreateCustomDateTime] = useState('');
   const [isCreatingVideo, setIsCreatingVideo] = useState(false);
 
+  // Google Drive Cloud State
+  const [gdriveStatus, setGdriveStatus] = useState<GDriveStatus | null>(null);
+  const [isGDriveModalOpen, setIsGDriveModalOpen] = useState(false);
+  const [gdriveClientId, setGdriveClientId] = useState('');
+  const [gdriveClientSecret, setGdriveClientSecret] = useState('');
+  const [autoDeleteLocal, setAutoDeleteLocal] = useState(true);
+  const [isTestingGDrive, setIsTestingGDrive] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+
   const sampleArticles = [
     {
       label: 'Thời Sự Quốc Gia: Cao Tốc & Đường Sắt',
@@ -88,9 +102,10 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
 
   const loadData = useCallback(async () => {
     try {
-      const [vidsRes, accsRes] = await Promise.all([
+      const [vidsRes, accsRes, gdRes] = await Promise.all([
         ExportedVideosApi.getExportedVideos(),
-        PublishingApi.getAccounts()
+        PublishingApi.getAccounts(),
+        GDriveApi.getStatus()
       ]);
 
       if (vidsRes.success && vidsRes.data) {
@@ -99,12 +114,81 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
       if (accsRes.success && accsRes.data) {
         setAccounts(accsRes.data);
       }
+      if (gdRes.success && gdRes.data) {
+        setGdriveStatus(gdRes.data);
+        setAutoDeleteLocal(gdRes.data.auto_delete_local_mp4);
+      }
     } catch (err) {
       console.error('Failed to load exported videos:', err);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const handleTestGDriveUpload = async () => {
+    setIsTestingGDrive(true);
+    setTestResult(null);
+    try {
+      const res = await GDriveApi.testUpload();
+      setTestResult(res.data);
+      if (res.success && res.data?.web_view_link) {
+        showToast('🚀 Tải video test lên Google Drive thành công!');
+        loadData();
+      } else {
+        showToast('Tải test: ' + (res.error?.message || 'Chưa hoàn tất'));
+      }
+    } catch {
+      showToast('Lỗi khi gửi yêu cầu kiểm tra Google Drive.');
+    } finally {
+      setIsTestingGDrive(false);
+    }
+  };
+
+  const handleSaveGDriveSettings = async () => {
+    try {
+      const payload: any = {
+        auto_delete_local_mp4_post_upload: autoDeleteLocal,
+      };
+      if (gdriveClientId) payload.client_id = gdriveClientId;
+      if (gdriveClientSecret) payload.client_secret = gdriveClientSecret;
+      const res = await GDriveApi.updateConfig(payload);
+      if (res.success) {
+        showToast('✅ Đã lưu cài đặt Google Drive!');
+        loadData();
+      }
+    } catch {
+      showToast('Lỗi khi lưu cấu hình.');
+    }
+  };
+
+  const handleConnectOAuth = async () => {
+    try {
+      const res = await GDriveApi.getAuthUrl();
+      if (res.success && res.data?.auth_url) {
+        window.location.href = res.data.auth_url;
+      } else {
+        showToast('Vui lòng nhập Client ID & Client Secret trước khi đăng nhập Google.');
+      }
+    } catch {
+      showToast('Lỗi khi tạo liên kết đăng nhập Google.');
+    }
+  };
+
+  const handleUploadJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await GDriveApi.uploadJsonFile(file);
+      if (res.success) {
+        showToast(res.data?.message || 'Đã nạp file chứng thực Google Drive thành công!');
+        loadData();
+      } else {
+        showToast(res.error?.message || 'Nạp file thất bại.');
+      }
+    } catch {
+      showToast('Lỗi khi tải file chứng thực lên.');
+    }
+  };
 
   // Initial load and periodic polling every 4 seconds for live progress
   useEffect(() => {
@@ -393,6 +477,66 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
           </div>
           <div className="mt-2 text-2xl font-bold text-emerald-400">{cleanedCount}</div>
           <div className="text-[11px] text-emerald-300/80 mt-1">Tự xóa file sau 1h đăng</div>
+        </div>
+      </div>
+
+      {/* Google Drive Cloud 5TB Sync Status Banner */}
+      <div className={`p-4 rounded-2xl border backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all ${
+        gdriveStatus?.configured
+          ? 'bg-emerald-950/20 border-emerald-500/30'
+          : 'bg-amber-950/20 border-amber-500/30'
+      }`}>
+        <div className="flex items-center space-x-3.5">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
+            gdriveStatus?.configured
+              ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white'
+              : 'bg-gradient-to-tr from-amber-600 to-orange-500 text-white'
+          }`}>
+            <Cloud className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-white tracking-wide">
+                LƯU TRỮ GOOGLE DRIVE CLOUD (5TB)
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                gdriveStatus?.configured
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+              }`}>
+                {gdriveStatus?.configured ? '🟢 Đã kết nối 5TB' : '🟡 Chế độ mô phỏng đám mây'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-0.5 max-w-2xl leading-relaxed">
+              {gdriveStatus?.configured
+                ? `Đang tự động đẩy video vào thư mục: ${gdriveStatus.folder_name}/YYYY-MM-DD/ và dọn dẹp bộ nhớ máy tính (Zero Local Storage).`
+                : 'Chưa gắn tài khoản Google Drive 5TB. Các liên kết video đang hiển thị ở chế độ xem trước đám mây. Hãy bấm cấu hình để video tự đẩy thẳng vào Drive cá nhân.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+          <button
+            onClick={handleTestGDriveUpload}
+            disabled={isTestingGDrive}
+            className="flex-1 md:flex-none px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-medium border border-white/10 flex items-center justify-center gap-1.5 transition"
+            title="Kiểm tra tải thử 1 video mẫu"
+          >
+            {isTestingGDrive ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+            )}
+            <span>Test Tải Thử</span>
+          </button>
+
+          <button
+            onClick={() => setIsGDriveModalOpen(true)}
+            className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Cài Đặt Drive 5TB</span>
+          </button>
         </div>
       </div>
 
@@ -719,15 +863,18 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                       </a>
                     )}
 
-                    <a
-                      href={`https://drive.google.com/drive/search?q=${encodeURIComponent(video.title)}`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      onClick={() => {
+                        const targetUrl = (gdriveStatus?.last_upload?.view_url && gdriveStatus.last_upload.title === video.title)
+                          ? gdriveStatus.last_upload.view_url
+                          : `https://drive.google.com/drive/search?q=${encodeURIComponent(video.title)}`;
+                        window.open(targetUrl, '_blank');
+                      }}
                       className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 transition"
-                      title="Mở trên Google Drive Cloud"
+                      title={gdriveStatus?.configured ? "Mở video trên Google Drive 5TB" : "Mở Google Drive (Chế độ xem trước)"}
                     >
                       <Cloud className="w-4 h-4" />
-                    </a>
+                    </button>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -1086,6 +1233,220 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Google Drive 5TB Configuration Modal */}
+      {isGDriveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-2xl bg-[#0B132B] border border-white/15 rounded-3xl p-6 sm:p-7 shadow-2xl overflow-y-auto max-h-[90vh] space-y-6">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
+                  <Cloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Kết Nối Google Drive Cloud (5TB)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      0 VND Phí API
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Tự động tạo thư mục theo ngày (AuraShorts/YYYY-MM-DD) và giải phóng 100% dung lượng đĩa
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsGDriveModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Current Status Overview */}
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Trạng thái kết nối:</span>
+                <span className={`font-semibold flex items-center gap-1.5 ${
+                  gdriveStatus?.configured ? 'text-emerald-400' : 'text-amber-400'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${gdriveStatus?.configured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                  {gdriveStatus?.configured ? 'Đã kết nối tài khoản Google thành công' : 'Chưa kết nối (Chế độ mô phỏng)'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Thư mục tự động tạo:</span>
+                <span className="font-mono text-cyan-300 font-medium">AuraShorts / {new Date().toISOString().slice(0, 10)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Tự xóa file máy tính sau khi đẩy (Zero Disk):</span>
+                <span className={`font-semibold ${autoDeleteLocal ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {autoDeleteLocal ? 'BẬT (0 MB ổ cứng)' : 'TẮT (Giữ lại file máy)'}
+                </span>
+              </div>
+            </div>
+
+            {/* Method 1: OAuth2 1-Click Connect */}
+            <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                  <span>Cách 1: Đăng nhập Google (Tài khoản 5TB)</span>
+                </span>
+                <span className="text-[10px] text-slate-400">Miễn phí trọn đời</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="text-[11px] text-slate-300 font-medium block mb-1">Google Client ID:</label>
+                  <input
+                    type="text"
+                    placeholder="xxxx.apps.googleusercontent.com"
+                    value={gdriveClientId}
+                    onChange={(e) => setGdriveClientId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-300 font-medium block mb-1">Google Client Secret:</label>
+                  <input
+                    type="password"
+                    placeholder="GOCSPX-xxxx"
+                    value={gdriveClientSecret}
+                    onChange={(e) => setGdriveClientSecret(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveGDriveSettings}
+                  className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-medium transition"
+                >
+                  Lưu Thông Tin
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConnectOAuth}
+                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-cyan-600/20 flex items-center gap-1.5 transition"
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>Đăng Nhập Google 1-Click</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Method 2: Upload credentials.json or service_account.json */}
+            <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/10">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <FolderPlus className="w-4 h-4 text-emerald-400" />
+                <span>Cách 2: Tải file credentials.json / service_account.json</span>
+              </span>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Nếu bạn đã tải file JSON từ Google Cloud Console về máy tính, bạn chỉ cần chọn file bên dưới để hệ thống tự động kết nối:
+              </p>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleUploadJson}
+                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 file:cursor-pointer cursor-pointer border border-white/10 rounded-xl p-1 bg-slate-900"
+                />
+              </div>
+            </div>
+
+            {/* Toggle Zero Local Storage */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-purple-400" />
+                  <span>Chế độ Zero Local Storage (0 MB Ổ Cứng)</span>
+                </span>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Tự động xóa sạch file MP4 cục bộ và file tạm ngay sau khi video được đẩy lên Google Drive.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextVal = !autoDeleteLocal;
+                  setAutoDeleteLocal(nextVal);
+                  GDriveApi.updateConfig({ auto_delete_local_mp4_post_upload: nextVal });
+                }}
+                className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out shrink-0 ${
+                  autoDeleteLocal ? 'bg-emerald-500' : 'bg-slate-700'
+                }`}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                  autoDeleteLocal ? 'translate-x-6' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Test Upload Action */}
+            <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <span>Kiểm Tra Kết Nối Thực Tế</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleTestGDriveUpload}
+                  disabled={isTestingGDrive}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/25 flex items-center gap-2 transition disabled:opacity-50"
+                >
+                  {isTestingGDrive ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang Test Tải Lên...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🚀 Tải Thử 1 Video Mẫu</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {testResult && (
+                <div className="p-3 rounded-xl bg-slate-900 border border-white/10 text-xs space-y-1.5">
+                  <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>{testResult.message || 'Kiểm tra thành công!'}</span>
+                  </div>
+                  {testResult.web_view_link && (
+                    <div className="text-[11px] text-slate-300">
+                      Link Google Drive:{' '}
+                      <a
+                        href={testResult.web_view_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-cyan-400 underline font-mono ml-1"
+                      >
+                        {testResult.web_view_link}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsGDriveModalOpen(false)}
+                className="px-5 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>

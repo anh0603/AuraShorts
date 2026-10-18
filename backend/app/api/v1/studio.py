@@ -12,7 +12,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, UploadFile, File
 from pydantic import BaseModel, Field
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
@@ -1282,6 +1282,96 @@ async def gdrive_oauth_callback(code: Optional[str] = None, error: Optional[str]
         return RedirectResponse(url=f"{frontend_redirect}?gdrive_connected=true")
     else:
         return RedirectResponse(url=f"{frontend_redirect}?gdrive_error={res.get('error', 'failed')}")
+
+
+@router.post("/gdrive/upload-json")
+async def upload_gdrive_json_file(file: UploadFile = File(...)):
+    """Receives either service_account.json or OAuth credentials.json and configures Drive."""
+    import json
+    from app.services.storage.google_drive_service import (
+        GoogleDriveService,
+        SERVICE_ACCOUNT_FILE,
+        CREDENTIALS_FILE,
+        CONFIG_FILE
+    )
+    content = await file.read()
+    try:
+        data = json.loads(content.decode("utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"File JSON không hợp lệ: {e}")
+
+    # Case A: Service Account JSON
+    if data.get("type") == "service_account" and "project_id" in data:
+        SERVICE_ACCOUNT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SERVICE_ACCOUNT_FILE.write_bytes(content)
+        cfg = GoogleDriveService.get_config()
+        cfg["enabled"] = True
+        cfg["connected_email"] = data.get("client_email")
+        GoogleDriveService.save_config(cfg)
+        return ApiResponse(
+            success=True,
+            data={
+                "type": "service_account",
+                "client_email": data.get("client_email"),
+                "message": f"Đã kết nối Service Account {data.get('client_email')}. Hãy chia sẻ thư mục Google Drive của bạn cho email này."
+            }
+        )
+
+    # Case B: OAuth 2.0 Client credentials (installed or web)
+    oauth_sec = data.get("installed") or data.get("web")
+    if oauth_sec:
+        client_id = oauth_sec.get("client_id", "")
+        client_secret = oauth_sec.get("client_secret", "")
+        cfg = GoogleDriveService.get_config()
+        cfg["client_id"] = client_id
+        cfg["client_secret"] = client_secret
+        cfg["enabled"] = True
+        GoogleDriveService.save_config(cfg)
+        return ApiResponse(
+            success=True,
+            data={
+                "type": "oauth_client",
+                "client_id": client_id,
+                "message": "Đã lưu Google Client ID & Secret! Bây giờ bạn có thể bấm 'Đăng nhập Google' để hoàn tất kết nối 1-Click."
+            }
+        )
+
+    # Case C: Already authorized user credentials token
+    if "token" in data or "refresh_token" in data:
+        CREDENTIALS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        CREDENTIALS_FILE.write_bytes(content)
+        cfg = GoogleDriveService.get_config()
+        cfg["enabled"] = True
+        GoogleDriveService.save_config(cfg)
+        return ApiResponse(
+            success=True,
+            data={"type": "authorized_user", "message": "Đã nạp token Google Drive thành công!"}
+        )
+
+    raise HTTPException(status_code=400, detail="File JSON không đúng định dạng Service Account hoặc OAuth Client của Google.")
+
+
+@router.post("/gdrive/test-upload")
+async def test_gdrive_upload():
+    """Generates a small test video clip and verifies Google Drive upload."""
+    import time
+    import tempfile
+    from app.services.storage.google_drive_service import GoogleDriveService
+    tmp_path = Path(tempfile.gettempdir()) / f"aurashorts_test_{int(time.time())}.mp4"
+    # Create minimal mp4 or dummy bytes
+    tmp_path.write_bytes(b"AuraShorts OS Test Video Packet" * 50)
+    try:
+        res = GoogleDriveService.upload_video(
+            file_path=tmp_path,
+            title="AuraShorts Test Upload"
+        )
+        return ApiResponse(success=res.get("success", False), data=res)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
 
 
 

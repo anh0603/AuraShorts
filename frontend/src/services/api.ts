@@ -557,6 +557,56 @@ export const ExportedVideosApi = {
   },
 };
 
+export interface GDriveStatus {
+  configured: boolean;
+  enabled: boolean;
+  folder_id: string;
+  folder_name: string;
+  auto_cleanup_intermediates: boolean;
+  auto_delete_local_mp4: boolean;
+  last_upload?: {
+    file_name: string;
+    title: string;
+    file_size_mb: number;
+    uploaded_at: string;
+    view_url: string;
+    is_simulated: boolean;
+  };
+  has_service_account: boolean;
+  has_credentials_file: boolean;
+}
+
+export const GDriveApi = {
+  async getStatus(): Promise<ApiResponse<GDriveStatus>> {
+    return request<GDriveStatus>('/studio/gdrive/status');
+  },
+  async updateConfig(payload: any): Promise<ApiResponse<any>> {
+    return request<any>('/studio/gdrive/config', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async getAuthUrl(): Promise<ApiResponse<{ auth_url: string }>> {
+    return request<{ auth_url: string }>('/studio/gdrive/auth-url');
+  },
+  async testUpload(): Promise<ApiResponse<any>> {
+    return request<any>('/studio/gdrive/test-upload', {
+      method: 'POST',
+    });
+  },
+  async uploadJsonFile(file: File): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const baseUrl = '/api/v1';
+    const res = await fetch(`${baseUrl}/studio/gdrive/upload-json`, {
+      method: 'POST',
+      body: formData,
+    });
+    return res.json();
+  }
+};
+
+
 
 
 
