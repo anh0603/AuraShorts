@@ -491,37 +491,67 @@ def _generate_scene_graphic(scene_idx: int, scene_data: Dict[str, Any], project_
             b = int(c1[2] * (1 - ratio) + c2[2] * ratio)
             draw.line([(0, y), (target_w, y)], fill=(r, g, b))
 
-    # --- Adaptive Layout: Balanced for Landscape Images, Full-Bleed for Portrait/Square ---
+    # --- Adaptive Layout: Smart Contain & Ambient Glow for All Formats ---
     src_w, src_h = raw_img.width, raw_img.height
-    is_landscape = (src_w / src_h) >= 1.25
+    ar = src_w / src_h
 
-    if is_landscape:
-        # Balanced News Layout: Full ambient backdrop with sharp foreground subject
+    # Only if image is ALREADY a natural 9:16 vertical portrait (around 0.52 to 0.60):
+    if 0.52 <= ar <= 0.60:
+        scale = max(target_w / src_w, target_h / src_h)
+        new_w, new_h = int(src_w * scale), int(src_h * scale)
+        scaled = raw_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        crop_x = (new_w - target_w) // 2
+        crop_y = (new_h - target_h) // 2
+        final_canvas = scaled.crop((crop_x, crop_y, crop_x + target_w, crop_y + target_h))
+    else:
+        # Smart Fit & Ambient Backdrop (Zero Cropping, 100% of Image Preserved):
+        # 1. Ambient Background: fill canvas, blur Gaussian radius=36, darken to 0.38
         bg_scale = max(target_w / src_w, target_h / src_h)
         bg_w, bg_h = int(src_w * bg_scale), int(src_h * bg_scale)
         bg = raw_img.resize((bg_w, bg_h), Image.Resampling.LANCZOS)
         bg_crop_x = (bg_w - target_w) // 2
         bg_crop_y = (bg_h - target_h) // 2
         bg = bg.crop((bg_crop_x, bg_crop_y, bg_crop_x + target_w, bg_crop_y + target_h))
-        bg = bg.filter(ImageFilter.GaussianBlur(radius=28))
-        bg = ImageEnhance.Brightness(bg).enhance(0.42)
+        bg = bg.filter(ImageFilter.GaussianBlur(radius=36))
+        bg = ImageEnhance.Brightness(bg).enhance(0.38)
 
-        # Main sharp image centered in optimal safe-zone (y=260 to y=1280)
-        fg_w = target_w
-        fg_h = int(src_h * (fg_w / src_w))
+        # 2. Foreground Sharp Image: Co fit hoàn toàn vào vùng an toàn (y=210 đến y=1260)
+        safe_top = 210
+        safe_bottom = 1260
+        zone_h = safe_bottom - safe_top  # 1050 px
+        max_fg_w = target_w  # 1080 px
+
+        # Calculate exact scale to FIT without cropping any pixel
+        fit_scale = min(max_fg_w / src_w, zone_h / src_h)
+        fg_w = int(src_w * fit_scale)
+        fg_h = int(src_h * fit_scale)
         scaled_fg = raw_img.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
-        fg_y = 260 + max(0, (1020 - fg_h) // 2)
-        bg.paste(scaled_fg, (0, fg_y))
-        final_canvas = bg
-    else:
-        # Standard Full-Bleed 1080x1920 (9:16) for Portrait & Square Images
-        scale = max(target_w / src_w, target_h / src_h)
-        new_w = int(src_w * scale)
-        new_h = int(src_h * scale)
-        scaled = raw_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        crop_x = (new_w - target_w) // 2
-        crop_y = (new_h - target_h) // 2
-        final_canvas = scaled.crop((crop_x, crop_y, crop_x + target_w, crop_y + target_h))
+
+        fg_x = (target_w - fg_w) // 2
+        fg_y = safe_top + (zone_h - fg_h) // 2
+
+        # 3. Add delicate card border and soft ambient shadow if image is contained
+        if fg_w < target_w or fg_h < target_h:
+            fg_canvas = bg.convert("RGBA")
+            shadow_offset = 12
+            shadow_img = Image.new("RGBA", (fg_w + 24, fg_h + 24), (0, 0, 0, 0))
+            draw_sh = ImageDraw.Draw(shadow_img)
+            draw_sh.rounded_rectangle([(6, 6), (fg_w + 18, fg_h + 18)], radius=18, fill=(0, 0, 0, 140))
+            shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(radius=10))
+            fg_canvas.alpha_composite(shadow_img, (fg_x - 12, fg_y - 12 + shadow_offset))
+
+            mask = Image.new("L", (fg_w, fg_h), 0)
+            draw_mask = ImageDraw.Draw(mask)
+            draw_mask.rounded_rectangle([(0, 0), (fg_w, fg_h)], radius=16, fill=255)
+
+            fg_canvas.paste(scaled_fg, (fg_x, fg_y), mask)
+
+            draw_border = ImageDraw.Draw(fg_canvas)
+            draw_border.rounded_rectangle([(fg_x, fg_y), (fg_x + fg_w, fg_y + fg_h)], radius=16, outline=(255, 255, 255, 45), width=2)
+            final_canvas = fg_canvas.convert("RGB")
+        else:
+            bg.paste(scaled_fg, (fg_x, fg_y))
+            final_canvas = bg
 
     # Safe-zone lighting overlays
     overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
@@ -941,11 +971,20 @@ async def render_video(req: RenderVideoRequest):
         # Exact duration matching scene audio voiceover to ensure 100% sync
         clip_dur = round(base_dur, 3)
 
-        # Buttery-smooth scale with even integer dimensions and exact=1 eliminating micro-jitter
-        if idx % 2 == 0:
-            vf = f"scale=w='trunc(1080*(1+0.05*t/{clip_dur})/2)*2':h='trunc(1920*(1+0.05*t/{clip_dur})/2)*2':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2:exact=1,fps=25"
+        # 4 Dynamic Cinematic Ken Burns Motion Styles (Gentle, smooth camera movements)
+        motion_style = idx % 4
+        if motion_style == 0:
+            # Slow smooth zoom in (1.00x -> 1.08x)
+            vf = f"scale=w='trunc(1080*(1+0.08*t/{clip_dur})/2)*2':h='trunc(1920*(1+0.08*t/{clip_dur})/2)*2':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2:exact=1,fps=25"
+        elif motion_style == 1:
+            # Gentle pan left to right with slight 1.08x scale
+            vf = f"scale=w='trunc(1080*1.08/2)*2':h='trunc(1920*1.08/2)*2':eval=frame,crop=1080:1920:'(in_w-1080)*(0.15+0.70*t/{clip_dur})':(in_h-1920)/2:exact=1,fps=25"
+        elif motion_style == 2:
+            # Slow smooth zoom out (1.08x -> 1.01x)
+            vf = f"scale=w='trunc(1080*(1.08-0.07*t/{clip_dur})/2)*2':h='trunc(1920*(1.08-0.07*t/{clip_dur})/2)*2':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2:exact=1,fps=25"
         else:
-            vf = f"scale=w='trunc(1080*(1.05-0.05*t/{clip_dur})/2)*2':h='trunc(1920*(1.05-0.05*t/{clip_dur})/2)*2':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2:exact=1,fps=25"
+            # Gentle pan right to left with slight 1.08x scale
+            vf = f"scale=w='trunc(1080*1.08/2)*2':h='trunc(1920*1.08/2)*2':eval=frame,crop=1080:1920:'(in_w-1080)*(0.85-0.70*t/{clip_dur})':(in_h-1920)/2:exact=1,fps=25"
 
         clip_cmd = [
             'ffmpeg', '-y', '-loop', '1', '-i', str(img_p),
