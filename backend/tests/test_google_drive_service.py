@@ -79,6 +79,7 @@ def test_gdrive_daily_folder_logic():
 
 def test_gdrive_oauth_url_generation(monkeypatch):
     """Verify OAuth auth URL is constructed properly when client_id is present."""
+    monkeypatch.setattr(GoogleDriveService, "get_config", classmethod(lambda cls: {}))
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "test_client_id_123.apps.googleusercontent.com")
     url = GoogleDriveService.get_oauth_auth_url("http://localhost:8000/callback")
     assert url is not None

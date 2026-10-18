@@ -253,6 +253,11 @@ class GoogleDriveService:
                     print(f"[GoogleDrive Permission Notice]: {perm_err}")
 
             # Zero Disk Mode: If auto_delete_local_mp4_post_upload is enabled, delete local rendered video
+            del media
+            del request
+            import gc
+            gc.collect()
+
             if cfg.get("auto_delete_local_mp4_post_upload", False):
                 try:
                     if p.exists():
