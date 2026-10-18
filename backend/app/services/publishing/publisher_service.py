@@ -85,6 +85,19 @@ class PublisherService:
 
         # Check or prepare media file
         media_path = post.artifact_path or ""
+        downloaded_from_gdrive = False
+        if not media_path or not os.path.exists(media_path):
+            if getattr(post, "gdrive_file_id", None):
+                from pathlib import Path
+                from app.services.storage.google_drive_service import GoogleDriveService
+                target_temp = Path(os.getcwd()) / "storage" / "media" / f"gdrive_fetch_{post.video_project_id or post.id}.mp4"
+                print(f"[PublisherService] Local file missing. Fetching from Google Drive ID: {post.gdrive_file_id}...")
+                ok = GoogleDriveService.download_file(post.gdrive_file_id, target_temp)
+                if ok and target_temp.exists():
+                    media_path = str(target_temp)
+                    downloaded_from_gdrive = True
+                    print(f"[PublisherService] Successfully retrieved video from Google Drive: {media_path}")
+
         if not media_path or not os.path.exists(media_path):
             # Locate any valid test mp4 in workspace or storage
             potential_paths = [
@@ -134,6 +147,14 @@ class PublisherService:
             finished_at=finished_at
         )
         db.add(attempt)
+
+        # Zero Disk Mode: If video was downloaded temporarily from Google Drive, remove it immediately
+        if downloaded_from_gdrive and os.path.exists(media_path):
+            try:
+                os.remove(media_path)
+                print(f"[PublisherService] Zero Disk Mode: Cleaned up temporary fetched video {media_path}")
+            except Exception as ce:
+                print(f"[PublisherService Cleanup Warning]: {ce}")
 
         if publish_res.success:
             post.status = "PUBLISHED"

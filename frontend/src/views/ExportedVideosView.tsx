@@ -48,11 +48,21 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeVideoModal, setActiveVideoModal] = useState<ApiExportedVideo | null>(null);
+  const [modalPlayerSource, setModalPlayerSource] = useState<'cloud' | 'local'>('cloud');
   const [scheduleModalVideo, setScheduleModalVideo] = useState<ApiExportedVideo | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedDateTime, setSelectedDateTime] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleOpenVideoModal = (video: ApiExportedVideo) => {
+    setActiveVideoModal(video);
+    if (video.file_exists && video.video_url) {
+      setModalPlayerSource('local');
+    } else {
+      setModalPlayerSource('cloud');
+    }
+  };
 
   // Quick Create Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -748,6 +758,33 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                         </div>
                       </div>
                     </div>
+                  ) : (isCleaned || !video.file_exists) && (video.gdrive_file_id || video.gdrive_preview_url) ? (
+                    <div 
+                      onClick={() => handleOpenVideoModal(video)}
+                      className="relative w-full rounded-2xl overflow-hidden bg-gradient-to-br from-slate-900 to-indigo-950/80 border border-emerald-500/30 hover:border-emerald-400 aspect-[16/9] mb-4 flex items-center justify-center cursor-pointer group shadow-lg transition-all"
+                    >
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex flex-col items-center justify-center transition p-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenVideoModal(video);
+                          }}
+                          className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 backdrop-blur-md flex items-center justify-center text-white border border-emerald-400/40 shadow-xl transform group-hover:scale-110 transition mb-2"
+                        >
+                          <Play className="w-5 h-5 ml-0.5 fill-white" />
+                        </button>
+                        <span className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1.5">
+                          <Cloud className="w-3.5 h-3.5" />
+                          Phát trực tiếp từ Drive 5TB (0 MB đĩa)
+                        </span>
+                      </div>
+                      <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-slate-300">
+                        Cloud Stream
+                      </span>
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-emerald-500/80 text-[10px] text-white font-medium flex items-center gap-1 shadow">
+                        <CheckCircle2 className="w-3 h-3" /> Đã lưu Drive
+                      </span>
+                    </div>
                   ) : isCleaned ? (
                     <div className="relative w-full rounded-2xl overflow-hidden bg-slate-900 border border-white/5 aspect-[16/9] mb-4 flex items-center justify-center p-4 text-center">
                       <div className="flex flex-col items-center justify-center text-slate-300">
@@ -762,7 +799,7 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                     </div>
                   ) : mediaUrl ? (
                     <div 
-                      onClick={() => setActiveVideoModal(video)}
+                      onClick={() => handleOpenVideoModal(video)}
                       className="relative w-full rounded-2xl overflow-hidden bg-slate-900 border border-white/10 hover:border-indigo-500/50 aspect-[16/9] mb-4 flex items-center justify-center cursor-pointer group shadow-lg transition-all"
                     >
                       <video 
@@ -774,7 +811,7 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveVideoModal(video);
+                            handleOpenVideoModal(video);
                           }}
                           className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shadow-xl transform group-hover:scale-110 transition"
                         >
@@ -831,9 +868,9 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                 {/* Bottom Actions */}
                 <div className="flex items-center justify-between pt-3 border-t border-white/10 gap-2">
                   <div className="flex items-center space-x-2">
-                    {mediaUrl && !isCleaned && (
+                    {(mediaUrl || video.gdrive_preview_url || video.gdrive_file_id) && (
                       <button
-                        onClick={() => setActiveVideoModal(video)}
+                        onClick={() => handleOpenVideoModal(video)}
                         className="px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-medium border border-indigo-500/20 flex items-center gap-1 transition"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -929,61 +966,130 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
       )}
 
       {/* Video Playback Modal (9:16 Theater Preview) */}
-      {activeVideoModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="relative bg-[#0F172A] border border-white/20 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
-            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-              <span className="font-semibold text-xs text-white truncate max-w-[280px]">
-                {activeVideoModal.title}
-              </span>
-              <button
-                onClick={() => setActiveVideoModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {activeVideoModal && (() => {
+        const hasLocal = Boolean(activeVideoModal.file_exists && activeVideoModal.video_url);
+        const gdriveId = activeVideoModal.gdrive_file_id || (gdriveStatus?.last_upload?.title === activeVideoModal.title ? gdriveStatus.last_upload.file_id : null);
+        const hasCloud = Boolean(gdriveId || activeVideoModal.gdrive_preview_url);
+        const isCloudMode = modalPlayerSource === 'cloud' || !hasLocal;
+        const cloudPreviewUrl = activeVideoModal.gdrive_preview_url || (gdriveId ? `https://drive.google.com/file/d/${gdriveId}/preview` : null);
 
-            <div className="relative aspect-[9/16] bg-black flex items-center justify-center max-h-[72vh]">
-              <video
-                src={getMediaFullUrl(activeVideoModal.video_url)}
-                controls
-                autoPlay
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <div className="p-3 bg-slate-900 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
-              <span className="flex items-center gap-1.5 text-red-400">
-                <Youtube className="w-4 h-4" />
-                {activeVideoModal.account?.account_name || 'Kênh YouTube'}
-              </span>
-
-              {activeVideoModal.video_url && (
-                <a
-                  href={getMediaFullUrl(activeVideoModal.video_url)}
-                  download={`rendered_${activeVideoModal.project_id}.mp4`}
-                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-1 transition"
+        return (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="relative bg-[#0F172A] border border-white/20 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center space-x-2 truncate max-w-[280px]">
+                  <span className="font-semibold text-xs text-white truncate">
+                    {activeVideoModal.title}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setActiveVideoModal(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Tải File Gốc</span>
-                </a>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Source Switcher if both local and cloud exist */}
+              {hasLocal && hasCloud && (
+                <div className="bg-slate-900/90 px-4 py-2 border-b border-white/5 flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setModalPlayerSource('cloud')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+                      isCloudMode
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span>Google Drive Cloud (0 MB)</span>
+                  </button>
+                  <button
+                    onClick={() => setModalPlayerSource('local')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+                      !isCloudMode
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Film className="w-3.5 h-3.5" />
+                    <span>File Máy Tính</span>
+                  </button>
+                </div>
               )}
 
-              <a
-                href={`https://drive.google.com/drive/search?q=${encodeURIComponent(activeVideoModal.title)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1 transition"
-                title="Mở trên Google Drive"
-              >
-                <Cloud className="w-3.5 h-3.5" />
-                <span>Google Drive</span>
-              </a>
+              {/* Player Stage */}
+              <div className="relative aspect-[9/16] bg-black flex items-center justify-center max-h-[70vh]">
+                {isCloudMode && cloudPreviewUrl ? (
+                  <iframe
+                    src={cloudPreviewUrl}
+                    className="w-full h-full border-0"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    title={activeVideoModal.title}
+                  />
+                ) : hasLocal ? (
+                  <video
+                    src={getMediaFullUrl(activeVideoModal.video_url)}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                ) : cloudPreviewUrl ? (
+                  <iframe
+                    src={cloudPreviewUrl}
+                    className="w-full h-full border-0"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    title={activeVideoModal.title}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-6 text-center text-slate-400">
+                    <Cloud className="w-10 h-10 text-emerald-400 mb-2" />
+                    <span className="text-xs font-medium text-white">Đang đồng bộ luồng phát đám mây</span>
+                    <p className="text-[11px] text-slate-400 mt-1 max-w-xs">
+                      Video đã được lưu trữ an toàn trên Google Drive 5TB. Bấm nút bên dưới để mở trực tiếp.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer info & buttons */}
+              <div className="p-3 bg-slate-900 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
+                <span className="flex items-center gap-1.5 text-red-400">
+                  <Youtube className="w-4 h-4" />
+                  {activeVideoModal.account?.account_name || 'Kênh YouTube'}
+                </span>
+
+                <div className="flex items-center space-x-2">
+                  {hasLocal && (
+                    <a
+                      href={getMediaFullUrl(activeVideoModal.video_url)}
+                      download={`rendered_${activeVideoModal.project_id}.mp4`}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-1 transition"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Tải Máy</span>
+                    </a>
+                  )}
+
+                  <a
+                    href={activeVideoModal.gdrive_view_url || (gdriveId ? `https://drive.google.com/file/d/${gdriveId}/view?usp=sharing` : `https://drive.google.com/drive/search?q=${encodeURIComponent(activeVideoModal.title)}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1 transition"
+                    title="Mở trên Google Drive"
+                  >
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span>Mở Drive</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Modal: Change Channel & Schedule Time */}
       {scheduleModalVideo && (

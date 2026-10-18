@@ -91,6 +91,8 @@ class ExportedVideosService:
         quality_audit: Optional[Dict[str, Any]] = None,
         account_id: Optional[str] = None,
         scheduled_time_raw: Optional[Any] = None,
+        gdrive_file_id: Optional[str] = None,
+        gdrive_view_url: Optional[str] = None,
         db: Optional[Session] = None
     ) -> Dict[str, Any]:
         """
@@ -162,7 +164,9 @@ class ExportedVideosService:
                         scheduled_time=scheduled_time or now_dt,
                         status="SCHEDULED",
                         idempotency_key=idempotency_key,
-                        is_cleaned_up=False
+                        is_cleaned_up=False,
+                        gdrive_file_id=gdrive_file_id,
+                        gdrive_view_url=gdrive_view_url
                     )
                     session.add(post)
                 else:
@@ -170,6 +174,10 @@ class ExportedVideosService:
                     existing_post.account_id = target_account_id
                     existing_post.title = title
                     existing_post.scheduled_time = scheduled_time or now_dt
+                    if gdrive_file_id:
+                        existing_post.gdrive_file_id = gdrive_file_id
+                    if gdrive_view_url:
+                        existing_post.gdrive_view_url = gdrive_view_url
                     if existing_post.status != "PUBLISHED":
                         existing_post.status = "SCHEDULED"
                     existing_post.is_cleaned_up = False
@@ -293,6 +301,18 @@ class ExportedVideosService:
                     p_name = os.path.basename(p.artifact_path)
                     video_web_url = f"/storage/artifacts/{p_name}"
 
+            gdrive_fid = getattr(p, "gdrive_file_id", None)
+            gdrive_vurl = getattr(p, "gdrive_view_url", None)
+            if not gdrive_fid:
+                try:
+                    from app.services.storage.google_drive_service import GoogleDriveService
+                    last_up = GoogleDriveService.get_config().get("last_upload")
+                    if last_up and (last_up.get("title") == p.title or (p.artifact_path and last_up.get("file_name") == os.path.basename(p.artifact_path))):
+                        gdrive_fid = last_up.get("file_id")
+                        gdrive_vurl = last_up.get("view_url")
+                except Exception:
+                    pass
+
             results.append({
                 "id": p.id,
                 "project_id": p.video_project_id or p.id,
@@ -302,6 +322,9 @@ class ExportedVideosService:
                 "progress_percent": 100,
                 "current_step": "Hoàn tất render và kiểm tra chất lượng",
                 "video_url": video_web_url,
+                "gdrive_file_id": gdrive_fid,
+                "gdrive_view_url": gdrive_vurl,
+                "gdrive_preview_url": f"https://drive.google.com/file/d/{gdrive_fid}/preview" if gdrive_fid else None,
                 "duration_seconds": None,
                 "file_size_mb": file_size_mb,
                 "file_exists": file_exists,

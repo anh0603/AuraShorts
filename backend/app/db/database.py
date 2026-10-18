@@ -60,8 +60,13 @@ def init_db() -> None:
         with engine.connect() as conn:
             res = conn.execute(text("PRAGMA table_info(post_queues)"))
             cols = [row[1] for row in res.fetchall()]
-            if cols and "is_cleaned_up" not in cols:
-                conn.execute(text("ALTER TABLE post_queues ADD COLUMN is_cleaned_up BOOLEAN DEFAULT 0"))
+            if cols:
+                if "is_cleaned_up" not in cols:
+                    conn.execute(text("ALTER TABLE post_queues ADD COLUMN is_cleaned_up BOOLEAN DEFAULT 0"))
+                if "gdrive_file_id" not in cols:
+                    conn.execute(text("ALTER TABLE post_queues ADD COLUMN gdrive_file_id VARCHAR(128)"))
+                if "gdrive_view_url" not in cols:
+                    conn.execute(text("ALTER TABLE post_queues ADD COLUMN gdrive_view_url VARCHAR(512)"))
                 conn.commit()
     except Exception:
         pass

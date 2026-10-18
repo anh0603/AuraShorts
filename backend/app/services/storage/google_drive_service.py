@@ -394,6 +394,42 @@ class GoogleDriveService:
             return {"success": False, "error": str(e)}
 
     @classmethod
+    def get_stream_preview_url(cls, file_id: str) -> str:
+        """Returns the embeddable Google Drive preview URL for in-app video streaming."""
+        if not file_id:
+            return ""
+        return f"https://drive.google.com/file/d/{file_id}/preview"
+
+    @classmethod
+    def download_file(cls, file_id: str, destination_path: Path) -> bool:
+        """
+        Downloads a video file from Google Drive to destination_path for YouTube publishing
+        if the local file was already cleaned up.
+        """
+        if not file_id:
+            return False
+        creds = cls.get_credentials()
+        if not creds:
+            return False
+        try:
+            from googleapiclient.discovery import build
+            from googleapiclient.http import MediaIoBaseDownload
+            import io
+
+            service = build('drive', 'v3', credentials=creds, cache_discovery=False)
+            request = service.files().get_media(fileId=file_id)
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(destination_path, 'wb') as fh:
+                downloader = MediaIoBaseDownload(fh, request, chunksize=1024 * 1024 * 5)
+                done = False
+                while not done:
+                    status, done = downloader.next_chunk()
+            return destination_path.exists() and destination_path.stat().st_size > 0
+        except Exception as e:
+            print(f"[GoogleDrive Download Error]: {e}")
+            return False
+
+    @classmethod
     def cleanup_intermediates(cls, project_id: str, keep_rendered_mp4: bool = True) -> Dict[str, Any]:
         """
         Deletes all intermediate processing files for project_id:

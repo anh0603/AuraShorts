@@ -1035,15 +1035,6 @@ async def render_video(req: RenderVideoRequest):
         shutil.copyfile(str(output_mp4), str(global_mp4))
 
     file_size_mb = round(output_mp4.stat().st_size / (1024 * 1024), 2) if output_mp4.exists() else 0.0
-    ExportedVideosService.complete_render(
-        project_id=safe_proj,
-        video_url=f"/storage/artifacts/rendered_{safe_proj}.mp4",
-        duration_seconds=final_output_duration,
-        file_size_mb=file_size_mb,
-        quality_audit=quality_audit,
-        account_id=req.account_id,
-        scheduled_time_raw=req.scheduled_time
-    )
 
     # Automatically upload to Google Drive & Clean up local intermediates
     gdrive_data: Dict[str, Any] = {}
@@ -1060,6 +1051,21 @@ async def render_video(req: RenderVideoRequest):
         )
     except Exception as gde:
         print(f"[GoogleDrive / Cleanup Hook Warning]: {gde}")
+
+    gdrive_fid = gdrive_data.get("file_id") if gdrive_data.get("success") else None
+    gdrive_vurl = gdrive_data.get("web_view_link") if gdrive_data.get("success") else None
+
+    ExportedVideosService.complete_render(
+        project_id=safe_proj,
+        video_url=f"/storage/artifacts/rendered_{safe_proj}.mp4",
+        duration_seconds=final_output_duration,
+        file_size_mb=file_size_mb,
+        quality_audit=quality_audit,
+        account_id=req.account_id,
+        scheduled_time_raw=req.scheduled_time,
+        gdrive_file_id=gdrive_fid,
+        gdrive_view_url=gdrive_vurl
+    )
 
     return ApiResponse(
         success=True,

@@ -215,6 +215,8 @@ class PostQueueModel(Base):
     status = Column(String(32), default="PENDING_APPROVAL", index=True)  # PENDING_APPROVAL, APPROVED, SCHEDULED, PUBLISHING, PUBLISHED, FAILED, REJECTED
     idempotency_key = Column(String(128), unique=True, nullable=False, index=True)
     is_cleaned_up = Column(Boolean, default=False, nullable=True)
+    gdrive_file_id = Column(String(128), nullable=True)
+    gdrive_view_url = Column(String(512), nullable=True)
     
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)

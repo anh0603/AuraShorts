@@ -524,6 +524,9 @@ export interface ApiExportedVideo {
   cleanup_time: string | null;
   remaining_cleanup_seconds: number | null;
   created_at: string | null;
+  gdrive_file_id?: string | null;
+  gdrive_view_url?: string | null;
+  gdrive_preview_url?: string | null;
 }
 
 export const ExportedVideosApi = {
@@ -565,6 +568,7 @@ export interface GDriveStatus {
   auto_cleanup_intermediates: boolean;
   auto_delete_local_mp4: boolean;
   last_upload?: {
+    file_id?: string;
     file_name: string;
     title: string;
     file_size_mb: number;
