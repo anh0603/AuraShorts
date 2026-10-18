@@ -71,6 +71,8 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
   const [autoDeleteLocal, setAutoDeleteLocal] = useState(true);
   const [isTestingGDrive, setIsTestingGDrive] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [gdriveModalTab, setGdriveModalTab] = useState<'config' | 'guide'>('config');
+  const [activeGuideStep, setActiveGuideStep] = useState(1);
 
   const sampleArticles = [
     {
@@ -1267,176 +1269,446 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
               </button>
             </div>
 
-            {/* Current Status Overview */}
-            <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Trạng thái kết nối:</span>
-                <span className={`font-semibold flex items-center gap-1.5 ${
-                  gdriveStatus?.configured ? 'text-emerald-400' : 'text-amber-400'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${gdriveStatus?.configured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-                  {gdriveStatus?.configured ? 'Đã kết nối tài khoản Google thành công' : 'Chưa kết nối (Chế độ mô phỏng)'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Thư mục tự động tạo:</span>
-                <span className="font-mono text-cyan-300 font-medium">AuraShorts / {new Date().toISOString().slice(0, 10)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Tự xóa file máy tính sau khi đẩy (Zero Disk):</span>
-                <span className={`font-semibold ${autoDeleteLocal ? 'text-emerald-400' : 'text-slate-400'}`}>
-                  {autoDeleteLocal ? 'BẬT (0 MB ổ cứng)' : 'TẮT (Giữ lại file máy)'}
-                </span>
-              </div>
-            </div>
-
-            {/* Method 1: OAuth2 1-Click Connect */}
-            <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/10">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                  <span>Cách 1: Đăng nhập Google (Tài khoản 5TB)</span>
-                </span>
-                <span className="text-[10px] text-slate-400">Miễn phí trọn đời</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="text-[11px] text-slate-300 font-medium block mb-1">Google Client ID:</label>
-                  <input
-                    type="text"
-                    placeholder="xxxx.apps.googleusercontent.com"
-                    value={gdriveClientId}
-                    onChange={(e) => setGdriveClientId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] text-slate-300 font-medium block mb-1">Google Client Secret:</label>
-                  <input
-                    type="password"
-                    placeholder="GOCSPX-xxxx"
-                    value={gdriveClientSecret}
-                    onChange={(e) => setGdriveClientSecret(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleSaveGDriveSettings}
-                  className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-medium transition"
-                >
-                  Lưu Thông Tin
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConnectOAuth}
-                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-cyan-600/20 flex items-center gap-1.5 transition"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>Đăng Nhập Google 1-Click</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Method 2: Upload credentials.json or service_account.json */}
-            <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/10">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <FolderPlus className="w-4 h-4 text-emerald-400" />
-                <span>Cách 2: Tải file credentials.json / service_account.json</span>
-              </span>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Nếu bạn đã tải file JSON từ Google Cloud Console về máy tính, bạn chỉ cần chọn file bên dưới để hệ thống tự động kết nối:
-              </p>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleUploadJson}
-                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 file:cursor-pointer cursor-pointer border border-white/10 rounded-xl p-1 bg-slate-900"
-                />
-              </div>
-            </div>
-
-            {/* Toggle Zero Local Storage */}
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <HardDrive className="w-4 h-4 text-purple-400" />
-                  <span>Chế độ Zero Local Storage (0 MB Ổ Cứng)</span>
-                </span>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Tự động xóa sạch file MP4 cục bộ và file tạm ngay sau khi video được đẩy lên Google Drive.
-                </p>
-              </div>
+            {/* Modal Tabs */}
+            <div className="flex items-center space-x-2 p-1 bg-slate-900/90 rounded-2xl border border-white/10">
               <button
                 type="button"
-                onClick={() => {
-                  const nextVal = !autoDeleteLocal;
-                  setAutoDeleteLocal(nextVal);
-                  GDriveApi.updateConfig({ auto_delete_local_mp4_post_upload: nextVal });
-                }}
-                className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out shrink-0 ${
-                  autoDeleteLocal ? 'bg-emerald-500' : 'bg-slate-700'
+                onClick={() => setGdriveModalTab('config')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition ${
+                  gdriveModalTab === 'config'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                  autoDeleteLocal ? 'translate-x-6' : 'translate-x-0'
-                }`} />
+                <Settings className="w-3.5 h-3.5" />
+                <span>Cấu Hình & Kết Nối</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGdriveModalTab('guide')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition ${
+                  gdriveModalTab === 'guide'
+                    ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
+                <span>Slide Hướng Dẫn Từng Bước (0đ)</span>
               </button>
             </div>
 
-            {/* Test Upload Action */}
-            <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
-                  <span>Kiểm Tra Kết Nối Thực Tế</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleTestGDriveUpload}
-                  disabled={isTestingGDrive}
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/25 flex items-center gap-2 transition disabled:opacity-50"
-                >
-                  {isTestingGDrive ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Đang Test Tải Lên...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>🚀 Tải Thử 1 Video Mẫu</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {testResult && (
-                <div className="p-3 rounded-xl bg-slate-900 border border-white/10 text-xs space-y-1.5">
-                  <div className="flex items-center gap-2 text-emerald-400 font-semibold">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>{testResult.message || 'Kiểm tra thành công!'}</span>
+            {gdriveModalTab === 'config' ? (
+              <>
+                {/* Current Status Overview */}
+                <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Trạng thái kết nối:</span>
+                    <span className={`font-semibold flex items-center gap-1.5 ${
+                      gdriveStatus?.configured ? 'text-emerald-400' : 'text-amber-400'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${gdriveStatus?.configured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                      {gdriveStatus?.configured ? 'Đã kết nối tài khoản Google thành công' : 'Chưa kết nối (Chế độ mô phỏng)'}
+                    </span>
                   </div>
-                  {testResult.web_view_link && (
-                    <div className="text-[11px] text-slate-300">
-                      Link Google Drive:{' '}
-                      <a
-                        href={testResult.web_view_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-cyan-400 underline font-mono ml-1"
-                      >
-                        {testResult.web_view_link}
-                      </a>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Thư mục tự động tạo:</span>
+                    <span className="font-mono text-cyan-300 font-medium">AuraShorts / {new Date().toISOString().slice(0, 10)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Tự xóa file máy tính sau khi đẩy (Zero Disk):</span>
+                    <span className={`font-semibold ${autoDeleteLocal ? 'text-emerald-400' : 'text-slate-400'}`}>
+                      {autoDeleteLocal ? 'BẬT (0 MB ổ cứng)' : 'TẮT (Giữ lại file máy)'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Method 1: OAuth2 1-Click Connect */}
+                <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                      <span>Cách 1: Đăng nhập Google (Tài khoản 5TB)</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400">Miễn phí trọn đời</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="text-[11px] text-slate-300 font-medium block mb-1">Google Client ID:</label>
+                      <input
+                        type="text"
+                        placeholder="xxxx.apps.googleusercontent.com"
+                        value={gdriveClientId}
+                        onChange={(e) => setGdriveClientId(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-300 font-medium block mb-1">Google Client Secret:</label>
+                      <input
+                        type="password"
+                        placeholder="GOCSPX-xxxx"
+                        value={gdriveClientSecret}
+                        onChange={(e) => setGdriveClientSecret(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleSaveGDriveSettings}
+                      className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-medium transition"
+                    >
+                      Lưu Thông Tin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConnectOAuth}
+                      className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-cyan-600/20 flex items-center gap-1.5 transition"
+                    >
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      <span>Đăng Nhập Google 1-Click</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Method 2: Upload credentials.json or service_account.json */}
+                <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/10">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <FolderPlus className="w-4 h-4 text-emerald-400" />
+                    <span>Cách 2: Tải file credentials.json / service_account.json</span>
+                  </span>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Nếu bạn đã tải file JSON từ Google Cloud Console về máy tính, bạn chỉ cần chọn file bên dưới để hệ thống tự động kết nối:
+                  </p>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleUploadJson}
+                      className="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 file:cursor-pointer cursor-pointer border border-white/10 rounded-xl p-1 bg-slate-900"
+                    />
+                  </div>
+                </div>
+
+                {/* Toggle Zero Local Storage */}
+                <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <HardDrive className="w-4 h-4 text-purple-400" />
+                      <span>Chế độ Zero Local Storage (0 MB Ổ Cứng)</span>
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Tự động xóa sạch file MP4 cục bộ và file tạm ngay sau khi video được đẩy lên Google Drive.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextVal = !autoDeleteLocal;
+                      setAutoDeleteLocal(nextVal);
+                      GDriveApi.updateConfig({ auto_delete_local_mp4_post_upload: nextVal });
+                    }}
+                    className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out shrink-0 ${
+                      autoDeleteLocal ? 'bg-emerald-500' : 'bg-slate-700'
+                    }`}
+                  >
+                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                      autoDeleteLocal ? 'translate-x-6' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Test Upload Action */}
+                <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                      <span>Kiểm Tra Kết Nối Thực Tế</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleTestGDriveUpload}
+                      disabled={isTestingGDrive}
+                      className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/25 flex items-center gap-2 transition disabled:opacity-50"
+                    >
+                      {isTestingGDrive ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Đang Test Tải Lên...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🚀 Tải Thử 1 Video Mẫu</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {testResult && (
+                    <div className="p-3 rounded-xl bg-slate-900 border border-white/10 text-xs space-y-1.5">
+                      <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>{testResult.message || 'Kiểm tra thành công!'}</span>
+                      </div>
+                      {testResult.web_view_link && (
+                        <div className="text-[11px] text-slate-300">
+                          Link Google Drive:{' '}
+                          <a
+                            href={testResult.web_view_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-cyan-400 underline font-mono ml-1"
+                          >
+                            {testResult.web_view_link}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              /* Interactive Step-by-Step Slide Guide */
+              <div className="space-y-5">
+                {/* Step Indicator Progress */}
+                <div className="flex items-center justify-between gap-2 p-3 bg-slate-900/80 rounded-2xl border border-white/10 overflow-x-auto">
+                  {[
+                    { step: 1, title: '1. Tạo Project' },
+                    { step: 2, title: '2. Bật Drive API' },
+                    { step: 3, title: '3. Tạo Client ID' },
+                    { step: 4, title: '4. Kết Nối' }
+                  ].map((s) => (
+                    <button
+                      key={s.step}
+                      type="button"
+                      onClick={() => setActiveGuideStep(s.step)}
+                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center justify-center gap-1.5 ${
+                        activeGuideStep === s.step
+                          ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md'
+                          : 'bg-white/5 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                        activeGuideStep === s.step ? 'bg-white text-indigo-900 font-bold' : 'bg-slate-700 text-white'
+                      }`}>
+                        {s.step}
+                      </span>
+                      <span>{s.title}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Slide 1 */}
+                {activeGuideStep === 1 && (
+                  <div className="p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-extrabold">1</span>
+                        <span>Mở Google Cloud Console & Tạo Dự Án Mới (Miễn Phí 0đ)</span>
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Không cần thẻ Visa
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Google Cloud cho phép sử dụng Google Drive API hoàn toàn miễn phí trọn đời cho các ứng dụng cá nhân và doanh nghiệp vừa/nhỏ.
+                    </p>
+
+                    <ol className="list-decimal list-inside space-y-2 text-xs text-slate-300 bg-black/30 p-4 rounded-xl border border-white/5">
+                      <li>Truy cập trang quản trị:{' '}
+                        <a
+                          href="https://console.cloud.google.com/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-400 underline font-mono inline-flex items-center gap-1 font-semibold"
+                        >
+                          console.cloud.google.com <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </li>
+                      <li>Đăng nhập bằng tài khoản Google có chứa **5TB dung lượng** của bạn.</li>
+                      <li>Bấm vào menu chọn dự án ở góc trên bên trái $\rightarrow$ Chọn **"New Project" (Dự án mới)**.</li>
+                      <li>Đặt tên dự án: <code className="bg-slate-800 px-2 py-0.5 rounded text-cyan-300">AuraShorts Cloud</code> $\rightarrow$ Bấm **Create**.</li>
+                    </ol>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveGuideStep(2)}
+                        className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow"
+                      >
+                        <span>Sang Bước 2: Bật Drive API</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Slide 2 */}
+                {activeGuideStep === 2 && (
+                  <div className="p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-extrabold">2</span>
+                        <span>Bật Kích Hoạt "Google Drive API"</span>
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                        1 Click Kích Hoạt
+                      </span>
+                    </div>
+
+                    <ol className="list-decimal list-inside space-y-2 text-xs text-slate-300 bg-black/30 p-4 rounded-xl border border-white/5">
+                      <li>Trên ô tìm kiếm ở đầu trang Google Cloud Console, gõ:{' '}
+                        <code className="bg-slate-800 px-2 py-0.5 rounded text-cyan-300 font-bold">Google Drive API</code>
+                      </li>
+                      <li>Chọn kết quả **Google Drive API** từ danh sách hiện ra.</li>
+                      <li>Bấm vào nút màu xanh **"Enable" (Bật)** để kích hoạt quyền truy xuất Drive.</li>
+                      <li>Đợi khoảng 3 giây khi hệ thống thông báo API đã được kích hoạt thành công.</li>
+                    </ol>
+
+                    <div className="flex justify-between items-center pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveGuideStep(1)}
+                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition"
+                      >
+                        Quay lại Bước 1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveGuideStep(3)}
+                        className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow"
+                      >
+                        <span>Sang Bước 3: Tạo Client ID</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Slide 3 */}
+                {activeGuideStep === 3 && (
+                  <div className="p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-extrabold">3</span>
+                        <span>Tạo Khóa Xác Thực (OAuth Client ID)</span>
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        Quan Trọng Nhất
+                      </span>
+                    </div>
+
+                    <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-300 bg-black/30 p-4 rounded-xl border border-white/5">
+                      <li>Vào menu bên trái chọn **APIs & Services** $\rightarrow$ **Credentials**.</li>
+                      <li>Bấm **"+ CREATE CREDENTIALS"** $\rightarrow$ Chọn **OAuth client ID**.</li>
+                      <li>Mục **Application type:** Chọn **Web application**.</li>
+                      <li>Mục **Authorized redirect URIs (URI chuyển hướng):**
+                        <div className="mt-1.5 p-2 bg-slate-900 rounded-lg border border-cyan-500/30 flex items-center justify-between">
+                          <code className="text-cyan-300 font-mono text-[11px]">http://localhost:8000/api/v1/studio/gdrive/oauth-callback</code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText('http://localhost:8000/api/v1/studio/gdrive/oauth-callback');
+                              showToast('📋 Đã sao chép Redirect URI!');
+                            }}
+                            className="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded text-[10px] font-semibold"
+                          >
+                            Copy URI
+                          </button>
+                        </div>
+                      </li>
+                      <li>Bấm **CREATE**. Hộp thoại sẽ hiện ra **Client ID** và **Client Secret** của bạn!</li>
+                    </ol>
+
+                    <div className="flex justify-between items-center pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveGuideStep(2)}
+                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition"
+                      >
+                        Quay lại Bước 2
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveGuideStep(4)}
+                        className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow"
+                      >
+                        <span>Sang Bước 4: Hoàn Tất Kết Nối</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Slide 4 */}
+                {activeGuideStep === 4 && (
+                  <div className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-extrabold">4</span>
+                        <span>Hoàn Tất Kết Nối Vào AuraShorts</span>
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Bước Cuối Cùng
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Bạn có thể chọn 1 trong 2 cách cực kỳ nhanh chóng:
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-2">
+                        <div className="font-bold text-cyan-300 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                          <span>Cách A: Dán Mã Trực Tiếp</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          Chuyển sang tab **"Cấu Hình & Kết Nối"** $\rightarrow$ Dán Client ID & Client Secret vào 2 ô $\rightarrow$ Bấm **"Đăng Nhập Google 1-Click"**.
+                        </p>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-2">
+                        <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+                          <FolderPlus className="w-4 h-4 text-emerald-400" />
+                          <span>Cách B: Tải File JSON</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          Tại Google Cloud Console, bấm nút **"DOWNLOAD JSON"** $\rightarrow$ Kéo thả file JSON đó vào ô tải file ở tab Cấu Hình là xong ngay!
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>Sau khi kết nối, hệ thống sẽ tự động tạo thư mục theo ngày và xóa file rác máy tính hoàn toàn tự động!</span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveGuideStep(3)}
+                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition"
+                      >
+                        Quay lại Bước 3
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGdriveModalTab('config')}
+                        className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs flex items-center gap-1.5 transition shadow"
+                      >
+                        <span>Mở Tab Cấu Hình Để Nhập Ngay</span>
+                        <Settings className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Modal Actions */}
             <div className="flex items-center justify-end pt-3 border-t border-white/10">
