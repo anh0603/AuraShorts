@@ -509,6 +509,7 @@ export interface ApiExportedVideo {
   progress_percent: number;
   current_step: string;
   video_url: string | null;
+  thumbnail_url?: string | null;
   duration_seconds: number | null;
   file_size_mb: number;
   file_exists: boolean;

@@ -758,77 +758,81 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                         </div>
                       </div>
                     </div>
-                  ) : (isCleaned || !video.file_exists) && (video.gdrive_file_id || video.gdrive_preview_url) ? (
-                    <div 
-                      onClick={() => handleOpenVideoModal(video)}
-                      className="relative w-full rounded-2xl overflow-hidden bg-gradient-to-br from-slate-900 to-indigo-950/80 border border-emerald-500/30 hover:border-emerald-400 aspect-[16/9] mb-4 flex items-center justify-center cursor-pointer group shadow-lg transition-all"
-                    >
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex flex-col items-center justify-center transition p-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenVideoModal(video);
-                          }}
-                          className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 backdrop-blur-md flex items-center justify-center text-white border border-emerald-400/40 shadow-xl transform group-hover:scale-110 transition mb-2"
-                        >
-                          <Play className="w-5 h-5 ml-0.5 fill-white" />
-                        </button>
-                        <span className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1.5">
-                          <Cloud className="w-3.5 h-3.5" />
-                          Phát trực tiếp từ Drive 5TB (0 MB đĩa)
-                        </span>
-                      </div>
-                      <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-slate-300">
-                        Cloud Stream
-                      </span>
-                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-emerald-500/80 text-[10px] text-white font-medium flex items-center gap-1 shadow">
-                        <CheckCircle2 className="w-3 h-3" /> Đã lưu Drive
-                      </span>
-                    </div>
-                  ) : isCleaned ? (
-                    <div className="relative w-full rounded-2xl overflow-hidden bg-slate-900 border border-white/5 aspect-[16/9] mb-4 flex items-center justify-center p-4 text-center">
-                      <div className="flex flex-col items-center justify-center text-slate-300">
-                        <Sparkles className="w-8 h-8 text-emerald-400 mb-2 opacity-80" />
-                        <div className="text-xs font-medium text-emerald-300">
-                          File cục bộ đã được dọn dẹp an toàn
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1 max-w-xs">
-                          Sau khi video đăng tải 1 tiếng, hệ thống tự động giải phóng bộ nhớ ổ đĩa. Bạn có thể xem trực tiếp video đã phát sóng trên YouTube.
-                        </p>
-                      </div>
-                    </div>
-                  ) : mediaUrl ? (
-                    <div 
-                      onClick={() => handleOpenVideoModal(video)}
-                      className="relative w-full rounded-2xl overflow-hidden bg-slate-900 border border-white/10 hover:border-indigo-500/50 aspect-[16/9] mb-4 flex items-center justify-center cursor-pointer group shadow-lg transition-all"
-                    >
-                      <video 
-                        src={mediaUrl} 
-                        className="w-full h-full object-contain bg-black"
-                        preload="metadata"
-                      />
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/15 flex items-center justify-center transition">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenVideoModal(video);
-                          }}
-                          className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shadow-xl transform group-hover:scale-110 transition"
-                        >
-                          <Play className="w-5 h-5 ml-0.5 fill-white" />
-                        </button>
-                      </div>
-                      <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-slate-300">
-                        MP4 9:16
-                      </span>
-                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-emerald-500/80 text-[10px] text-white font-medium flex items-center gap-1 shadow">
-                        <CheckCircle2 className="w-3 h-3" /> Đã hoàn tất 100%
-                      </span>
-                    </div>
                   ) : (
-                    <div className="relative w-full rounded-2xl overflow-hidden bg-slate-900 border border-white/5 aspect-[16/9] mb-4 flex items-center justify-center text-center p-4">
-                      <Film className="w-8 h-8 text-slate-600 mx-auto mb-1" />
-                      <span className="text-xs text-slate-400">File video sẵn sàng</span>
+                    <div 
+                      onClick={() => handleOpenVideoModal(video)}
+                      className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-white/10 hover:border-indigo-500/50 aspect-[16/9] mb-4 flex items-center justify-center cursor-pointer group shadow-lg transition-all"
+                    >
+                      {/* Ambient + Sharp Thumbnail Display */}
+                      {video.thumbnail_url ? (
+                        <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
+                          <img 
+                            src={getMediaFullUrl(video.thumbnail_url)} 
+                            alt="" 
+                            aria-hidden="true"
+                            className="absolute inset-0 w-full h-full object-cover blur-md opacity-35 scale-110" 
+                          />
+                          <img 
+                            src={getMediaFullUrl(video.thumbnail_url)} 
+                            alt={video.title} 
+                            className="relative z-10 h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" 
+                          />
+                        </div>
+                      ) : mediaUrl ? (
+                        <video 
+                          src={mediaUrl} 
+                          className="w-full h-full object-contain bg-black"
+                          preload="metadata"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
+                          <Film className="w-8 h-8 text-indigo-400/50" />
+                        </div>
+                      )}
+
+                      {/* Dark Overlay with Play Button & Cloud Indicator */}
+                      <div className="absolute inset-0 z-20 bg-black/40 group-hover:bg-black/20 flex flex-col items-center justify-center transition p-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenVideoModal(video);
+                          }}
+                          className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white border shadow-xl transform group-hover:scale-110 transition ${
+                            !video.file_exists && (video.gdrive_file_id || video.gdrive_preview_url)
+                              ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border-emerald-400/40'
+                              : 'bg-gradient-to-tr from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 border-white/30'
+                          }`}
+                        >
+                          <Play className="w-5 h-5 ml-0.5 fill-white" />
+                        </button>
+
+                        {!video.file_exists && (video.gdrive_file_id || video.gdrive_preview_url) && (
+                          <span className="mt-2 text-[11px] font-semibold text-emerald-300 flex items-center gap-1.5 bg-black/75 px-3 py-1 rounded-full border border-emerald-500/30 backdrop-blur-md shadow-lg">
+                            <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                            Phát từ Drive 5TB (0 MB đĩa)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Top Left Status Badge */}
+                      {!video.file_exists && (video.gdrive_file_id || video.gdrive_preview_url) ? (
+                        <span className="absolute top-2.5 left-2.5 z-30 px-2.5 py-0.5 rounded-lg bg-emerald-500/90 text-[10px] text-white font-medium flex items-center gap-1 shadow-md backdrop-blur-sm">
+                          <CheckCircle2 className="w-3 h-3" /> Đã lưu Drive
+                        </span>
+                      ) : isCleaned ? (
+                        <span className="absolute top-2.5 left-2.5 z-30 px-2.5 py-0.5 rounded-lg bg-slate-700/90 text-[10px] text-slate-200 font-medium flex items-center gap-1 shadow-md backdrop-blur-sm">
+                          <Sparkles className="w-3 h-3" /> Đã dọn dẹp
+                        </span>
+                      ) : (
+                        <span className="absolute top-2.5 left-2.5 z-30 px-2.5 py-0.5 rounded-lg bg-emerald-500/80 text-[10px] text-white font-medium flex items-center gap-1 shadow-md backdrop-blur-sm">
+                          <CheckCircle2 className="w-3 h-3" /> Sẵn sàng 100%
+                        </span>
+                      )}
+
+                      {/* Bottom Right Resolution Badge */}
+                      <span className="absolute bottom-2.5 right-2.5 z-30 px-2 py-0.5 rounded bg-black/75 text-[10px] text-slate-300 backdrop-blur-sm border border-white/10">
+                        {!video.file_exists && (video.gdrive_file_id || video.gdrive_preview_url) ? 'Drive Stream' : 'MP4 9:16'}
+                      </span>
                     </div>
                   )}
 

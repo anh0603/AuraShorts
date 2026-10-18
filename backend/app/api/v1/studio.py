@@ -1068,6 +1068,21 @@ async def render_video(req: RenderVideoRequest):
     )
     final_output_duration = quality_audit.get("duration_seconds", round(actual_audio_duration, 2))
 
+    # Generate lightweight high-quality thumbnail (540x960 JPEG)
+    thumb_path = ARTIFACTS_DIR / f"thumb_{safe_proj}.jpg"
+    try:
+        if output_mp4.exists():
+            subprocess.run([
+                'ffmpeg', '-y', '-ss', '0.5',
+                '-i', str(output_mp4),
+                '-vframes', '1',
+                '-vf', 'scale=540:960:force_original_aspect_ratio=decrease',
+                '-q:v', '3',
+                str(thumb_path)
+            ], capture_output=True, timeout=5)
+    except Exception as te:
+        print(f"[Thumbnail Generation Warning]: {te}")
+
     # Mirror to global output file for default viewer
     if output_mp4.exists() and output_mp4.stat().st_size > 1000:
         import shutil
@@ -1096,6 +1111,7 @@ async def render_video(req: RenderVideoRequest):
 
     ExportedVideosService.complete_render(
         project_id=safe_proj,
+        title=req.title,
         video_url=f"/storage/artifacts/rendered_{safe_proj}.mp4",
         duration_seconds=final_output_duration,
         file_size_mb=file_size_mb,

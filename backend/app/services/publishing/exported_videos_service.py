@@ -93,6 +93,7 @@ class ExportedVideosService:
         scheduled_time_raw: Optional[Any] = None,
         gdrive_file_id: Optional[str] = None,
         gdrive_view_url: Optional[str] = None,
+        title: Optional[str] = None,
         db: Optional[Session] = None
     ) -> Dict[str, Any]:
         """
@@ -102,7 +103,7 @@ class ExportedVideosService:
         now_dt = utc_now()
         existing_job = cls._in_flight_renders.pop(project_id, None)
 
-        title = (existing_job.get("title") if existing_job else None) or "AuraShorts Video"
+        title = title or (existing_job.get("title") if existing_job else None) or "AuraShorts Video"
         target_account_id = account_id or (existing_job.get("account_id") if existing_job else None)
 
         # Parse scheduled time
@@ -230,6 +231,7 @@ class ExportedVideosService:
                 "progress_percent": job.get("progress_percent", 20),
                 "current_step": job.get("current_step", "Đang xử lý render video..."),
                 "video_url": None,
+                "thumbnail_url": None,
                 "duration_seconds": None,
                 "file_size_mb": None,
                 "file_exists": False,
@@ -313,6 +315,22 @@ class ExportedVideosService:
                 except Exception:
                     pass
 
+            # Resolve thumbnail URL (lightweight JPG kept even when video is cleaned or stored on Drive)
+            thumb_url = None
+            cand_pids = [p.video_project_id, p.id]
+            for cand in cand_pids:
+                if cand:
+                    t_file = ARTIFACTS_DIR / f"thumb_{cand}.jpg"
+                    if t_file.exists():
+                        thumb_url = f"/storage/artifacts/thumb_{cand}.jpg"
+                        break
+                    s1_file = ARTIFACTS_DIR / f"scene_1_{cand}.jpg"
+                    if s1_file.exists():
+                        thumb_url = f"/storage/artifacts/{s1_file.name}"
+                        break
+            if not thumb_url and file_exists:
+                thumb_url = video_web_url
+
             results.append({
                 "id": p.id,
                 "project_id": p.video_project_id or p.id,
@@ -322,6 +340,7 @@ class ExportedVideosService:
                 "progress_percent": 100,
                 "current_step": "Hoàn tất render và kiểm tra chất lượng",
                 "video_url": video_web_url,
+                "thumbnail_url": thumb_url,
                 "gdrive_file_id": gdrive_fid,
                 "gdrive_view_url": gdrive_vurl,
                 "gdrive_preview_url": f"https://drive.google.com/file/d/{gdrive_fid}/preview" if gdrive_fid else None,
