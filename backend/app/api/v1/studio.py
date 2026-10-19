@@ -495,63 +495,50 @@ def _generate_scene_graphic(scene_idx: int, scene_data: Dict[str, Any], project_
     src_w, src_h = raw_img.width, raw_img.height
     ar = src_w / src_h
 
-    # Only if image is ALREADY a natural 9:16 vertical portrait (around 0.52 to 0.60):
-    if 0.52 <= ar <= 0.60:
-        scale = max(target_w / src_w, target_h / src_h)
-        new_w, new_h = int(src_w * scale), int(src_h * scale)
-        scaled = raw_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        crop_x = (new_w - target_w) // 2
-        crop_y = (new_h - target_h) // 2
-        final_canvas = scaled.crop((crop_x, crop_y, crop_x + target_w, crop_y + target_h))
-    else:
-        # Smart Fit & Ambient Backdrop (Zero Cropping, 100% of Image Preserved):
-        # 1. Ambient Background: fill canvas, blur Gaussian radius=36, darken to 0.38
-        bg_scale = max(target_w / src_w, target_h / src_h)
-        bg_w, bg_h = int(src_w * bg_scale), int(src_h * bg_scale)
-        bg = raw_img.resize((bg_w, bg_h), Image.Resampling.LANCZOS)
-        bg_crop_x = (bg_w - target_w) // 2
-        bg_crop_y = (bg_h - target_h) // 2
-        bg = bg.crop((bg_crop_x, bg_crop_y, bg_crop_x + target_w, bg_crop_y + target_h))
-        bg = bg.filter(ImageFilter.GaussianBlur(radius=36))
-        bg = ImageEnhance.Brightness(bg).enhance(0.38)
+    # Smart Fit & Ambient Backdrop (Zero Cropping, 100% of Image Preserved for ALL formats):
+    # 1. Ambient Background: fill canvas, blur Gaussian radius=40, darken to 0.35
+    bg_scale = max(target_w / src_w, target_h / src_h)
+    bg_w, bg_h = int(src_w * bg_scale), int(src_h * bg_scale)
+    bg = raw_img.resize((bg_w, bg_h), Image.Resampling.LANCZOS)
+    bg_crop_x = (bg_w - target_w) // 2
+    bg_crop_y = (bg_h - target_h) // 2
+    bg = bg.crop((bg_crop_x, bg_crop_y, bg_crop_x + target_w, bg_crop_y + target_h))
+    bg = bg.filter(ImageFilter.GaussianBlur(radius=40))
+    bg = ImageEnhance.Brightness(bg).enhance(0.35)
 
-        # 2. Foreground Sharp Image: Co fit hoàn toàn vào vùng an toàn (y=210 đến y=1260)
-        safe_top = 210
-        safe_bottom = 1260
-        zone_h = safe_bottom - safe_top  # 1050 px
-        max_fg_w = target_w  # 1080 px
+    # 2. Card zone: fit inside safe_top=260, safe_bottom=1270, max_fg_w=960
+    # Leaves 0-260px at top for logo/header, and 1270-1920px at bottom for subtitles!
+    safe_top = 260
+    safe_bottom = 1270
+    zone_h = safe_bottom - safe_top  # 1010 px
+    max_fg_w = 960  # 60px margins on left/right
 
-        # Calculate exact scale to FIT without cropping any pixel
-        fit_scale = min(max_fg_w / src_w, zone_h / src_h)
-        fg_w = int(src_w * fit_scale)
-        fg_h = int(src_h * fit_scale)
-        scaled_fg = raw_img.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
+    fit_scale = min(max_fg_w / src_w, zone_h / src_h)
+    fg_w = int(src_w * fit_scale)
+    fg_h = int(src_h * fit_scale)
+    scaled_fg = raw_img.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
 
-        fg_x = (target_w - fg_w) // 2
-        fg_y = safe_top + (zone_h - fg_h) // 2
+    fg_x = (target_w - fg_w) // 2
+    fg_y = safe_top + (zone_h - fg_h) // 2
 
-        # 3. Add delicate card border and soft ambient shadow if image is contained
-        if fg_w < target_w or fg_h < target_h:
-            fg_canvas = bg.convert("RGBA")
-            shadow_offset = 12
-            shadow_img = Image.new("RGBA", (fg_w + 24, fg_h + 24), (0, 0, 0, 0))
-            draw_sh = ImageDraw.Draw(shadow_img)
-            draw_sh.rounded_rectangle([(6, 6), (fg_w + 18, fg_h + 18)], radius=18, fill=(0, 0, 0, 140))
-            shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(radius=10))
-            fg_canvas.alpha_composite(shadow_img, (fg_x - 12, fg_y - 12 + shadow_offset))
+    # 3. Floating card with rounded corners, subtle glowing border and soft ambient shadow
+    fg_canvas = bg.convert("RGBA")
+    shadow_offset = 12
+    shadow_img = Image.new("RGBA", (fg_w + 32, fg_h + 32), (0, 0, 0, 0))
+    draw_sh = ImageDraw.Draw(shadow_img)
+    draw_sh.rounded_rectangle([(8, 8), (fg_w + 24, fg_h + 24)], radius=24, fill=(0, 0, 0, 160))
+    shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(radius=12))
+    fg_canvas.alpha_composite(shadow_img, (fg_x - 16, fg_y - 16 + shadow_offset))
 
-            mask = Image.new("L", (fg_w, fg_h), 0)
-            draw_mask = ImageDraw.Draw(mask)
-            draw_mask.rounded_rectangle([(0, 0), (fg_w, fg_h)], radius=16, fill=255)
+    mask = Image.new("L", (fg_w, fg_h), 0)
+    draw_mask = ImageDraw.Draw(mask)
+    draw_mask.rounded_rectangle([(0, 0), (fg_w, fg_h)], radius=22, fill=255)
 
-            fg_canvas.paste(scaled_fg, (fg_x, fg_y), mask)
+    fg_canvas.paste(scaled_fg, (fg_x, fg_y), mask)
 
-            draw_border = ImageDraw.Draw(fg_canvas)
-            draw_border.rounded_rectangle([(fg_x, fg_y), (fg_x + fg_w, fg_y + fg_h)], radius=16, outline=(255, 255, 255, 45), width=2)
-            final_canvas = fg_canvas.convert("RGB")
-        else:
-            bg.paste(scaled_fg, (fg_x, fg_y))
-            final_canvas = bg
+    draw_border = ImageDraw.Draw(fg_canvas)
+    draw_border.rounded_rectangle([(fg_x, fg_y), (fg_x + fg_w, fg_y + fg_h)], radius=22, outline=(255, 255, 255, 65), width=2)
+    final_canvas = fg_canvas.convert("RGB")
 
     # Safe-zone lighting overlays
     overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
@@ -971,20 +958,22 @@ async def render_video(req: RenderVideoRequest):
         # Exact duration matching scene audio voiceover to ensure 100% sync
         clip_dur = round(base_dur, 3)
 
-        # 4 Dynamic Cinematic Ken Burns Motion Styles (Gentle, smooth camera movements)
+        # 4 Dynamic Cinematic Ken Burns Motion Styles (Gentle, sub-pixel smooth movements)
         motion_style = idx % 4
+        z_step = round(0.035 / max(1, clip_dur * 25), 6)
+
         if motion_style == 0:
-            # Slow smooth zoom in (1.00x -> 1.08x)
-            vf = f"scale=w='trunc(1080*(1+0.08*t/{clip_dur})/2)*2':h='trunc(1920*(1+0.08*t/{clip_dur})/2)*2':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2:exact=1,fps=25"
+            # Slow gentle smooth zoom in (1.00x -> 1.04x)
+            vf = f"zoompan=z='min(zoom+{z_step},1.045)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
         elif motion_style == 1:
-            # Gentle pan left to right with slight 1.08x scale
-            vf = f"scale=w='trunc(1080*1.08/2)*2':h='trunc(1920*1.08/2)*2':eval=frame,crop=1080:1920:'(in_w-1080)*(0.15+0.70*t/{clip_dur})':(in_h-1920)/2:exact=1,fps=25"
+            # Gentle smooth pan left to right
+            vf = f"zoompan=z='1.035':d=1:x='(iw-iw/zoom)*(on/(25*{clip_dur}))':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
         elif motion_style == 2:
-            # Slow smooth zoom out (1.08x -> 1.01x)
-            vf = f"scale=w='trunc(1080*(1.08-0.07*t/{clip_dur})/2)*2':h='trunc(1920*(1.08-0.07*t/{clip_dur})/2)*2':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2:exact=1,fps=25"
+            # Slow gentle smooth zoom out (1.04x -> 1.00x)
+            vf = f"zoompan=z='if(eq(on,1),1.045,max(1.001,zoom-{z_step}))':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
         else:
-            # Gentle pan right to left with slight 1.08x scale
-            vf = f"scale=w='trunc(1080*1.08/2)*2':h='trunc(1920*1.08/2)*2':eval=frame,crop=1080:1920:'(in_w-1080)*(0.85-0.70*t/{clip_dur})':(in_h-1920)/2:exact=1,fps=25"
+            # Gentle smooth pan right to left
+            vf = f"zoompan=z='1.035':d=1:x='(iw-iw/zoom)*(1-on/(25*{clip_dur}))':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
 
         clip_cmd = [
             'ffmpeg', '-y', '-loop', '1', '-i', str(img_p),
