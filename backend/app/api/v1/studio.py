@@ -943,33 +943,61 @@ async def render_video(req: RenderVideoRequest):
         # Exact duration matching scene audio voiceover to ensure 100% sync
         clip_dur = round(base_dur, 3)
 
-        # 4 Dynamic Cinematic Ken Burns Motion Styles (Gentle, sub-pixel smooth movements)
+        # Dynamic Cinematic Ken Burns Motion with 4K Subpixel Anti-Aliasing
+        # Upscaling to 2160x3840 + d=total_frames without -loop 1 eliminates the 1-pixel integer stair-stepping jitter
+        total_frames = max(25, int(round(clip_dur * 25)))
         motion_style = idx % 4
-        z_step = round(0.035 / max(1, clip_dur * 25), 6)
 
         if motion_style == 0:
-            # Slow gentle smooth zoom in (1.00x -> 1.04x)
-            vf = f"zoompan=z='min(zoom+{z_step},1.045)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
+            # Slow gentle smooth zoom in (1.001x -> 1.045x)
+            vf = (
+                f"scale=2160:3840,"
+                f"zoompan=z='1.001+(on/{total_frames})*0.044':d={total_frames}:"
+                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
+            )
         elif motion_style == 1:
-            # Gentle smooth pan left to right
-            vf = f"zoompan=z='1.035':d=1:x='(iw-iw/zoom)*(on/(25*{clip_dur}))':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
+            # Slow gentle smooth zoom out (1.045x -> 1.001x)
+            vf = (
+                f"scale=2160:3840,"
+                f"zoompan=z='1.045-(on/{total_frames})*0.044':d={total_frames}:"
+                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
+            )
         elif motion_style == 2:
-            # Slow gentle smooth zoom out (1.04x -> 1.00x)
-            vf = f"zoompan=z='if(eq(on,1),1.045,max(1.001,zoom-{z_step}))':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
+            # Gentle focus zoom in with subtle upper bias (ideal for portraits & headlines)
+            vf = (
+                f"scale=2160:3840,"
+                f"zoompan=z='1.001+(on/{total_frames})*0.044':d={total_frames}:"
+                f"x='iw/2-(iw/zoom/2)':y='ih/3-(ih/zoom/3)':s=1080x1920:fps=25"
+            )
         else:
-            # Gentle smooth pan right to left
-            vf = f"zoompan=z='1.035':d=1:x='(iw-iw/zoom)*(1-on/(25*{clip_dur}))':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=25"
+            # Gentle pull out with subtle lower anchor
+            vf = (
+                f"scale=2160:3840,"
+                f"zoompan=z='1.045-(on/{total_frames})*0.044':d={total_frames}:"
+                f"x='iw/2-(iw/zoom/2)':y='2*ih/3-(2*ih/zoom/3)':s=1080x1920:fps=25"
+            )
 
         clip_cmd = [
-            'ffmpeg', '-y', '-loop', '1', '-i', str(img_p),
+            'ffmpeg', '-y', '-i', str(img_p),
             '-vf', vf,
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p',
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '19', '-pix_fmt', 'yuv420p',
             '-t', str(clip_dur),
             str(clip_p)
         ]
         clip_res = subprocess.run(clip_cmd, capture_output=True)
         if clip_res.returncode == 0 and clip_p.exists():
             scene_clips.append(clip_p)
+        else:
+            # Fallback to direct static frame loop if 4K zoompan fails
+            fallback_cmd = [
+                'ffmpeg', '-y', '-loop', '1', '-i', str(img_p),
+                '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p',
+                '-t', str(clip_dur),
+                str(clip_p)
+            ]
+            f_res = subprocess.run(fallback_cmd, capture_output=True)
+            if f_res.returncode == 0 and clip_p.exists():
+                scene_clips.append(clip_p)
 
     # 4. Assemble Video Track with exact scene audio synchronization
     video_track_file = ARTIFACTS_DIR / f"video_track_{safe_proj}.mp4"
