@@ -186,6 +186,12 @@ class RenderVideoRequest(BaseModel):
     template: Optional[str] = "News Explainer"
     account_id: Optional[str] = Field(None, description="Assigned YouTube channel account ID")
     scheduled_time: Optional[str] = Field(None, description="Scheduled publish ISO timestamp")
+    run_in_background: Optional[bool] = Field(False, description="Run video render in background without blocking")
+
+
+async def _run_cmd_async(*args, **kwargs):
+    """Executes subprocess in a thread pool worker so the asyncio event loop is never blocked."""
+    return await asyncio.to_thread(subprocess.run, *args, **kwargs)
 
 
 def _sanitize_filename(name: str) -> str:
@@ -885,22 +891,7 @@ def _generate_ass_subtitles(
         f.write(ass_header + "\n".join(events) + "\n")
 
 
-@router.post("/render-video", response_model=ApiResponse)
-async def render_video(req: RenderVideoRequest):
-    """
-    Renders high-retention 1080x1920 9:16 Shorts video:
-    1. AI Neural Voiceover (synthesized per-scene for microsecond sync)
-    2. Dynamic Ken Burns camera motion (Slow Zoom In / Slow Zoom Out per scene)
-    3. Seamless ambient Lo-Fi background music (BGM ducking at -22dB)
-    4. CapCut/TikTok Pop-in Karaoke typography subtitles (.ass burnt-in)
-    5. Constant 25 FPS progressive MP4 (AAC 44.1kHz Stereo audio)
-    """
-    if not req.scenes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "EMPTY_SCENES", "message": "Kịch bản phải có ít nhất 1 phân cảnh để render video."}
-        )
-
+async def _execute_render_pipeline(req: RenderVideoRequest) -> Dict[str, Any]:
     safe_proj = _sanitize_filename(req.project_id)
     output_mp4 = ARTIFACTS_DIR / f"rendered_{safe_proj}.mp4"
     global_mp4 = ARTIFACTS_DIR / "rendered_short_1080x1920.mp4"
@@ -973,11 +964,11 @@ async def render_video(req: RenderVideoRequest):
                 '-c:a', 'libmp3lame', '-b:a', '192k', '-ar', '44100', '-ac', '2',
                 str(sc_file)
             ]
-            subprocess.run(trim_cmd, capture_output=True)
+            await _run_cmd_async(trim_cmd, capture_output=True)
 
             if sc_file.exists():
                 try:
-                    probe_res = subprocess.run(
+                    probe_res = await _run_cmd_async(
                         ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', str(sc_file)],
                         capture_output=True, text=True
                     )
@@ -998,7 +989,7 @@ async def render_video(req: RenderVideoRequest):
             # Fallback path if edge_tts stream fails
             if not sc_file.exists():
                 exp_s = max(2.0, len(sc_text.split()) / 3.0)
-                subprocess.run([
+                await _run_cmd_async([
                     'ffmpeg', '-y', '-f', 'lavfi',
                     '-i', f'sine=frequency=600:duration={exp_s}',
                     '-c:a', 'libmp3lame', '-b:a', '192k', '-ar', '44100', '-ac', '2',
@@ -1007,7 +998,7 @@ async def render_video(req: RenderVideoRequest):
                 sc_dur = exp_s
             else:
                 try:
-                    probe_res = subprocess.run(
+                    probe_res = await _run_cmd_async(
                         ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', str(sc_file)],
                         capture_output=True, text=True
                     )
@@ -1093,7 +1084,7 @@ async def render_video(req: RenderVideoRequest):
         '-c:a', 'libmp3lame', '-b:a', '192k', '-ar', '44100', '-ac', '2',
         str(voice_audio_file)
     ]
-    subprocess.run(concat_audio_cmd, capture_output=True)
+    await _run_cmd_async(concat_audio_cmd, capture_output=True)
 
     actual_audio_duration = sum(scene_durations)
     ExportedVideosService.update_render_progress(
@@ -1104,7 +1095,7 @@ async def render_video(req: RenderVideoRequest):
     mixed_audio_file = ARTIFACTS_DIR / f"mixed_audio_{safe_proj}.mp3"
     try:
         from app.services.media.bgm_helper import ensure_bgm_cinematic
-        ensure_bgm_cinematic(bgm_file)
+        await asyncio.to_thread(ensure_bgm_cinematic, bgm_file)
     except Exception:
         pass
     if bgm_file.exists():
@@ -1117,7 +1108,7 @@ async def render_video(req: RenderVideoRequest):
             '-c:a', 'libmp3lame', '-b:a', '192k',
             str(mixed_audio_file)
         ]
-        mix_res = subprocess.run(mix_audio_cmd, capture_output=True)
+        mix_res = await _run_cmd_async(mix_audio_cmd, capture_output=True)
         final_audio_track = mixed_audio_file if (mix_res.returncode == 0 and mixed_audio_file.exists()) else voice_audio_file
     else:
         final_audio_track = voice_audio_file
@@ -1132,7 +1123,7 @@ async def render_video(req: RenderVideoRequest):
     
     for idx, s in enumerate(req.scenes):
         img_p = ARTIFACTS_DIR / f"frame_{safe_proj}_{idx + 1}.png"
-        _generate_scene_graphic(idx, s, req.title or "AuraShorts Video", img_p)
+        await asyncio.to_thread(_generate_scene_graphic, idx, s, req.title or "AuraShorts Video", img_p)
 
         clip_p = ARTIFACTS_DIR / f"motion_clip_{safe_proj}_{idx + 1}.mp4"
         base_dur = scene_durations[idx]
@@ -1180,7 +1171,7 @@ async def render_video(req: RenderVideoRequest):
             '-t', str(clip_dur),
             str(clip_p)
         ]
-        clip_res = subprocess.run(clip_cmd, capture_output=True)
+        clip_res = await _run_cmd_async(clip_cmd, capture_output=True)
         if clip_res.returncode == 0 and clip_p.exists():
             scene_clips.append(clip_p)
         else:
@@ -1191,7 +1182,7 @@ async def render_video(req: RenderVideoRequest):
                 '-t', str(clip_dur),
                 str(clip_p)
             ]
-            f_res = subprocess.run(fallback_cmd, capture_output=True)
+            f_res = await _run_cmd_async(fallback_cmd, capture_output=True)
             if f_res.returncode == 0 and clip_p.exists():
                 scene_clips.append(clip_p)
 
@@ -1208,11 +1199,12 @@ async def render_video(req: RenderVideoRequest):
         '-movflags', '+faststart',
         str(video_track_file)
     ]
-    subprocess.run(concat_cmd, capture_output=True, timeout=60)
+    await _run_cmd_async(concat_cmd, capture_output=True, timeout=60)
 
     # 5. Generate Subtitles ASS File with exact scene durations & neural word timings
     ass_file = ARTIFACTS_DIR / f"subs_{safe_proj}.ass"
-    _generate_ass_subtitles(
+    await asyncio.to_thread(
+        _generate_ass_subtitles,
         req.scenes,
         ass_file,
         req.subtitle_mode or "word_group",
@@ -1237,7 +1229,7 @@ async def render_video(req: RenderVideoRequest):
     ]
 
     try:
-        render_res = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=90)
+        render_res = await _run_cmd_async(ffmpeg_cmd, capture_output=True, text=True, timeout=90)
         if render_res.returncode != 0 or not output_mp4.exists():
             # Fallback without subtitle filter if libass filter has path issue
             fallback_cmd = [
@@ -1253,12 +1245,13 @@ async def render_video(req: RenderVideoRequest):
                 '-t', str(round(actual_audio_duration, 2)),
                 str(output_mp4)
             ]
-            subprocess.run(fallback_cmd, capture_output=True, timeout=90)
+            await _run_cmd_async(fallback_cmd, capture_output=True, timeout=90)
     except Exception as e:
         print(f"[Studio Render Error] FFmpeg error: {e}")
 
     # 7. Tự động kiểm tra chất lượng trước khi xuất (Lệch, Thiếu, Sai)
-    quality_audit = _verify_and_heal_video(
+    quality_audit = await asyncio.to_thread(
+        _verify_and_heal_video,
         output_mp4,
         req.scenes,
         actual_audio_duration,
@@ -1270,7 +1263,7 @@ async def render_video(req: RenderVideoRequest):
     thumb_path = ARTIFACTS_DIR / f"thumb_{safe_proj}.jpg"
     try:
         if output_mp4.exists():
-            subprocess.run([
+            await _run_cmd_async([
                 'ffmpeg', '-y', '-ss', '0.5',
                 '-i', str(output_mp4),
                 '-vframes', '1',
@@ -1284,7 +1277,7 @@ async def render_video(req: RenderVideoRequest):
     # Mirror to global output file for default viewer
     if output_mp4.exists() and output_mp4.stat().st_size > 1000:
         import shutil
-        shutil.copyfile(str(output_mp4), str(global_mp4))
+        await asyncio.to_thread(shutil.copyfile, str(output_mp4), str(global_mp4))
 
     file_size_mb = round(output_mp4.stat().st_size / (1024 * 1024), 2) if output_mp4.exists() else 0.0
 
@@ -1293,11 +1286,13 @@ async def render_video(req: RenderVideoRequest):
     cleanup_data: Dict[str, Any] = {}
     try:
         from app.services.storage.google_drive_service import GoogleDriveService
-        gdrive_data = GoogleDriveService.upload_video(
+        gdrive_data = await asyncio.to_thread(
+            GoogleDriveService.upload_video,
             file_path=output_mp4,
             title=req.title or "AuraShorts Video"
         )
-        cleanup_data = GoogleDriveService.cleanup_intermediates(
+        cleanup_data = await asyncio.to_thread(
+            GoogleDriveService.cleanup_intermediates,
             project_id=safe_proj,
             keep_rendered_mp4=True
         )
@@ -1320,10 +1315,8 @@ async def render_video(req: RenderVideoRequest):
         gdrive_view_url=gdrive_vurl
     )
 
-    return ApiResponse(
-        success=True,
-        data={
-            "video_url": f"/storage/artifacts/rendered_{safe_proj}.mp4",
+    return {
+        "video_url": f"/storage/artifacts/rendered_{safe_proj}.mp4",
             "global_video_url": "/storage/artifacts/rendered_short_1080x1920.mp4",
             "audio_url": f"/storage/artifacts/voiceover_{safe_proj}.mp3",
             "duration_seconds": final_output_duration,
@@ -1335,7 +1328,61 @@ async def render_video(req: RenderVideoRequest):
             "gdrive": gdrive_data,
             "cleanup": cleanup_data
         }
-    )
+
+
+@router.post("/render-video", response_model=ApiResponse)
+async def render_video(req: RenderVideoRequest):
+    """
+    Renders high-retention 1080x1920 9:16 Shorts video:
+    1. AI Neural Voiceover (synthesized per-scene for microsecond sync)
+    2. Dynamic Ken Burns camera motion (Slow Zoom In / Slow Zoom Out per scene)
+    3. Seamless ambient Lo-Fi background music (BGM ducking at -22dB)
+    4. CapCut/TikTok Pop-in Karaoke typography subtitles (.ass burnt-in)
+    5. Constant 25 FPS progressive MP4 (AAC 44.1kHz Stereo audio)
+    """
+    if not req.scenes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "EMPTY_SCENES", "message": "Kịch bản phải có ít nhất 1 phân cảnh để render video."}
+        )
+
+    safe_proj = _sanitize_filename(req.project_id)
+
+    async def _safe_run_pipeline():
+        try:
+            await _execute_render_pipeline(req)
+        except Exception as exc:
+            err_msg = str(exc)
+            print(f"[Render Pipeline Background Error] Project {safe_proj}: {err_msg}")
+            from app.services.publishing.exported_videos_service import ExportedVideosService
+            ExportedVideosService.fail_render(safe_proj, err_msg)
+
+    if req.run_in_background:
+        # Launch pipeline as non-blocking background task and return immediately
+        asyncio.create_task(_safe_run_pipeline())
+        return ApiResponse(
+            success=True,
+            data={
+                "status": "RENDERING",
+                "project_id": safe_proj,
+                "video_url": f"/storage/artifacts/rendered_{safe_proj}.mp4",
+                "message": "Video đang được tạo ngầm trong hệ thống! Bạn có thể tiếp tục tạo video mới ngay bây giờ."
+            }
+        )
+
+    # Synchronous request (still 100% non-blocking for other tabs!)
+    try:
+        render_result = await _execute_render_pipeline(req)
+        return ApiResponse(
+            success=True,
+            data=render_result
+        )
+    except Exception as exc:
+        err_msg = str(exc)
+        print(f"[Render Pipeline Error] Project {safe_proj}: {err_msg}")
+        from app.services.publishing.exported_videos_service import ExportedVideosService
+        ExportedVideosService.fail_render(safe_proj, err_msg)
+        raise
 
 
 def _verify_and_heal_video(

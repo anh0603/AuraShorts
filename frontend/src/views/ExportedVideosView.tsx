@@ -195,12 +195,13 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
     }
   };
 
-  // Initial load and periodic polling every 4 seconds for live progress
+  // Initial load and smart adaptive polling (2s when rendering is active, 6s otherwise)
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 4000);
+    const isAnyRendering = videos.some(v => v.status === 'RENDERING');
+    const interval = setInterval(loadData, isAnyRendering ? 2000 : 6000);
     return () => clearInterval(interval);
-  }, [loadData]);
+  }, [loadData, videos]);
 
   const handlePublishNow = async (id: string) => {
     setActionLoadingId(id);

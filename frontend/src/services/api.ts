@@ -483,6 +483,7 @@ export const StudioApi = {
     template?: string;
     account_id?: string;
     scheduled_time?: string;
+    run_in_background?: boolean;
   }): Promise<ApiResponse<{
     video_url: string;
     global_video_url: string;

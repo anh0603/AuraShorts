@@ -201,6 +201,17 @@ class ExportedVideosService:
         }
 
     @classmethod
+    def fail_render(
+        cls,
+        project_id: str,
+        error_msg: str
+    ) -> None:
+        """Marks an in-flight render as failed."""
+        if project_id in cls._in_flight_renders:
+            cls._in_flight_renders[project_id]["status"] = "FAILED"
+            cls._in_flight_renders[project_id]["current_step"] = f"Lỗi: {error_msg}"
+
+    @classmethod
     def list_exported_videos(cls, db: Session) -> List[Dict[str, Any]]:
         """
         Returns full list of all exported videos:
@@ -227,7 +238,7 @@ class ExportedVideosService:
                 "id": job["id"],
                 "project_id": proj_id,
                 "title": job["title"],
-                "status": "RENDERING",
+                "status": job.get("status", "RENDERING"),
                 "progress_percent": job.get("progress_percent", 20),
                 "current_step": job.get("current_step", "Đang xử lý render video..."),
                 "video_url": None,

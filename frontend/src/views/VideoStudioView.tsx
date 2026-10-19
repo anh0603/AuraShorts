@@ -171,7 +171,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
   );
 
   // Real FFmpeg Video Render Pipeline Execution with Interactive Workflow
-  const executeRenderPipeline = useCallback(async (voicePresetToUse?: string) => {
+  const executeRenderPipeline = useCallback(async (voicePresetToUse?: string, runInBackground = false) => {
     if (scenes.length === 0) {
       showToast('Kịch bản video phải có ít nhất 1 phân cảnh!', 'warning');
       return;
@@ -180,6 +180,31 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     const voicePreset = voicePresetToUse || selectedVoicePreset;
     const voiceId = voicePreset.includes('HoaiMy') ? 'vi-VN-HoaiMyNeural' : 'vi-VN-NamMinhNeural';
     const isMale = !voicePreset.includes('HoaiMy');
+
+    if (runInBackground) {
+      showToast('⚡ Đã gửi lệnh tạo video ngầm! Bạn có thể chuyển tab hoặc tiếp tục tạo video mới ngay bây giờ.', 'success', 6000);
+      try {
+        const targetSchedTime = scheduleOption === 'custom' && customScheduleTime
+          ? new Date(customScheduleTime).toISOString()
+          : undefined;
+
+        await StudioApi.renderVideo({
+          project_id: project.id,
+          title: project.title,
+          scenes: scenes,
+          voice_id: voiceId,
+          voice_preset_id: voicePreset,
+          subtitle_mode: subtitleMode,
+          template: selectedTemplate,
+          account_id: selectedChannelId || undefined,
+          scheduled_time: targetSchedTime,
+          run_in_background: true
+        });
+      } catch (err: any) {
+        showToast(`Lỗi render ngầm: ${err?.message || 'Không thể gửi yêu cầu'}`, 'warning', 4000);
+      }
+      return;
+    }
 
     setIsRendering(true);
     setRenderCompletedSuccessfully(false);
@@ -326,7 +351,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
       ]);
       setTimeout(() => setIsRendering(false), 3000);
     }
-  }, [scenes, selectedVoicePreset, subtitleMode, selectedTemplate, project, onUpdateProject, totalDuration]);
+  }, [scenes, selectedVoicePreset, subtitleMode, selectedTemplate, project, onUpdateProject, totalDuration, scheduleOption, customScheduleTime, selectedChannelId]);
 
   // Sync state when project changes (from UrlToVideo or Trends)
   useEffect(() => {
@@ -764,29 +789,44 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             </div>
 
             {/* Modal Bottom Actions */}
-            <div className="pt-2 flex items-center justify-between relative z-10 border-t border-white/10">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 relative z-10 border-t border-white/10">
               <span className="text-xs text-slate-400 italic">
                 {renderCompletedSuccessfully
                   ? '🎉 Video MP4 đã sẵn sàng! Đang chuẩn bị trình phát...'
                   : '⏳ Vui lòng đợi trong giây lát. Hệ thống đang render kĩ lưỡng trước khi hiển thị.'}
               </span>
 
-              {renderCompletedSuccessfully && (
-                <button
-                  onClick={() => {
-                    setIsRendering(false);
-                    setRenderCompletedSuccessfully(false);
-                    if (videoRef.current) {
-                      videoRef.current.currentTime = 0;
-                      videoRef.current.play().catch(() => {});
-                    }
-                  }}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition transform hover:scale-105"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Xem Video Hoàn Thiện Ngay</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {!renderCompletedSuccessfully && (
+                  <button
+                    onClick={() => {
+                      setIsRendering(false);
+                      showToast('⚡ Video vẫn đang tiếp tục render ngầm trong hệ thống. Bạn có thể tự do chuyển tab hoặc tạo video tiếp theo!', 'info', 5000);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-semibold text-xs flex items-center gap-1.5 border border-cyan-500/30 transition shadow-md"
+                    title="Đóng bảng theo dõi và để hệ thống tiếp tục render ngầm"
+                  >
+                    <span>⚡ Chạy Ngầm & Tiếp Tục Tạo Video Khác</span>
+                  </button>
+                )}
+
+                {renderCompletedSuccessfully && (
+                  <button
+                    onClick={() => {
+                      setIsRendering(false);
+                      setRenderCompletedSuccessfully(false);
+                      if (videoRef.current) {
+                        videoRef.current.currentTime = 0;
+                        videoRef.current.play().catch(() => {});
+                      }
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition transform hover:scale-105"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Xem Video Hoàn Thiện Ngay</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -844,6 +884,17 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
           >
             <Sparkles className="w-4 h-4 text-cyan-200" />
             <span>{project.video_url ? '🎬 Render Lại Video MP4' : '🎬 Render Video MP4 Này'}</span>
+          </button>
+
+          {/* Background Render Button */}
+          <button
+            onClick={() => executeRenderPipeline(undefined, true)}
+            disabled={isRendering}
+            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-teal-600/30 transition transform hover:scale-105 active:scale-95 disabled:opacity-50"
+            title="Render video ngầm và tiếp tục tạo nhiều video khác liên tục không cần chờ đợi"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-teal-200" />
+            <span>⚡ Render Chạy Ngầm</span>
           </button>
 
           {onOpenExportedVideos && (

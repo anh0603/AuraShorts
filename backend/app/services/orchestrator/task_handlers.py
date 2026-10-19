@@ -1204,6 +1204,7 @@ class TaskHandlers:
 
             # Smart Contain Floating Card Layout (Zero Cropping, 100% of ANY Image/Table Visible):
             # 1. Ambient Background: fill canvas, blur Gaussian radius=40, darken to 0.35
+            src_w, src_h = raw_img.width, raw_img.height
             bg_scale = max(target_w / src_w, target_h / src_h)
             bg_w, bg_h = int(src_w * bg_scale), int(src_h * bg_scale)
             bg = raw_img.resize((bg_w, bg_h), Image.Resampling.LANCZOS)
