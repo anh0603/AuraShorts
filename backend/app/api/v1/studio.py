@@ -458,21 +458,6 @@ def _generate_scene_graphic(scene_idx: int, scene_data: Dict[str, Any], project_
             except Exception:
                 pass
 
-    # Dynamic camera framing variations across scenes using the real image
-    if raw_img is not None:
-        style = scene_idx % 5
-        lw, lh = raw_img.width, raw_img.height
-        if lw > 200 and lh > 200:
-            if style == 1:
-                raw_img = raw_img.crop((int(lw * 0.05), int(lh * 0.05), int(lw * 0.95), int(lh * 0.95)))
-            elif style == 2:
-                raw_img = raw_img.crop((0, int(lh * 0.02), int(lw * 0.9), int(lh * 0.98)))
-            elif style == 3:
-                raw_img = raw_img.crop((int(lw * 0.1), int(lh * 0.02), lw, int(lh * 0.98)))
-            elif style == 4:
-                raw_img = raw_img.crop((int(lw * 0.08), int(lh * 0.08), int(lw * 0.92), int(lh * 0.92)))
-                raw_img = ImageEnhance.Contrast(raw_img).enhance(1.10)
-
     # Fallback: Clean styled backdrop if no image found
     if raw_img is None:
         colors = [
@@ -677,7 +662,7 @@ def _generate_ass_subtitles(
 
                 # Alternating color and high-energy CapCut Pop-in Bounce Jump with actual position jump (\move) & scale pop
                 style = "TikTokYellow" if (g_idx % 2 == 0) else "TikTokWhite"
-                bounce_tag = "{\\move(540,1170,540,1140,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
+                bounce_tag = "{\\move(540,1480,540,1450,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
                 events.append(f"Dialogue: 0,{_to_ass_time(g_start)},{_to_ass_time(g_end)},{style},,0,0,0,,{bounce_tag}{grp_text}")
 
         else:
@@ -695,7 +680,7 @@ def _generate_ass_subtitles(
                     continue
 
                 style = "TikTokYellow" if (g_idx % 2 == 0) else "TikTokWhite"
-                bounce_tag = "{\\move(540,1170,540,1140,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
+                bounce_tag = "{\\move(540,1480,540,1450,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
                 events.append(f"Dialogue: 0,{_to_ass_time(g_start)},{_to_ass_time(g_end)},{style},,0,0,0,,{bounce_tag}{grp_text}")
 
         current_time += dur

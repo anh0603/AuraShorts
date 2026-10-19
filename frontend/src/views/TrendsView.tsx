@@ -161,7 +161,7 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
       const planRes = await TrendsApi.convertTrendToPlan(targetTopic.id, {
         target_duration_seconds: 60,
         aspect_ratio: '9:16',
-        auto_start: true
+        auto_start: false
       });
       if (planRes.success && planRes.data?.plan_id) {
         createdPlanId = planRes.data.plan_id;

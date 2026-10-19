@@ -1148,52 +1148,49 @@ class TaskHandlers:
                     b = int(c1[2] * (1 - ratio) + c2[2] * ratio)
                     draw_tmp.line([(0, y), (target_w, y)], fill=(r, g, b))
 
-            # Modern Prominent Hero Visual
-            src_w, src_h = raw_img.width, raw_img.height
-            is_landscape = (src_w / src_h) > 0.85
+            # Smart Contain Floating Card Layout (Zero Cropping, 100% of ANY Image/Table Visible):
+            # 1. Ambient Background: fill canvas, blur Gaussian radius=40, darken to 0.35
+            bg_scale = max(target_w / src_w, target_h / src_h)
+            bg_w, bg_h = int(src_w * bg_scale), int(src_h * bg_scale)
+            bg = raw_img.resize((bg_w, bg_h), Image.Resampling.LANCZOS)
+            bg_crop_x = (bg_w - target_w) // 2
+            bg_crop_y = (bg_h - target_h) // 2
+            bg = bg.crop((bg_crop_x, bg_crop_y, bg_crop_x + target_w, bg_crop_y + target_h))
+            bg = bg.filter(ImageFilter.GaussianBlur(radius=40))
+            bg = ImageEnhance.Brightness(bg).enhance(0.35)
 
-            if is_landscape and src_w > 80 and src_h > 80:
-                bg_scale = max(target_w / src_w, target_h / src_h)
-                bg_w, bg_h = int(src_w * bg_scale), int(src_h * bg_scale)
-                bg = raw_img.resize((bg_w, bg_h), Image.Resampling.BILINEAR)
-                crop_x = (bg_w - target_w) // 2
-                crop_y = (bg_h - target_h) // 2
-                bg = bg.crop((crop_x, crop_y, crop_x + target_w, crop_y + target_h))
-                bg = bg.filter(ImageFilter.GaussianBlur(radius=35))
-                bg = ImageEnhance.Brightness(bg).enhance(0.40)
+            # 2. Card zone: fit inside safe_top=260, safe_bottom=1280, max_fg_w=960
+            safe_top = 260
+            safe_bottom = 1280
+            zone_h = safe_bottom - safe_top  # 1020 px
+            max_fg_w = 960  # 60px margins on left/right
 
-                card_w = 1020
-                card_h = 1100
-                card_x = (target_w - card_w) // 2
-                card_y = 230
+            fit_scale = min(max_fg_w / src_w, zone_h / src_h)
+            fg_w = int(src_w * fit_scale)
+            fg_h = int(src_h * fit_scale)
+            scaled_fg = raw_img.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
 
-                scale = max(card_w / src_w, card_h / src_h)
-                sw, sh = int(src_w * scale), int(src_h * scale)
-                scaled_fg = raw_img.resize((sw, sh), Image.Resampling.LANCZOS)
-                fg_x = (sw - card_w) // 2
-                fg_y = (sh - card_h) // 2
-                fg = scaled_fg.crop((fg_x, fg_y, fg_x + card_w, fg_y + card_h))
+            fg_x = (target_w - fg_w) // 2
+            fg_y = safe_top + (zone_h - fg_h) // 2
 
-                mask = Image.new('L', (card_w, card_h), 0)
-                mask_draw = ImageDraw.Draw(mask)
-                mask_draw.rounded_rectangle([(0, 0), (card_w, card_h)], radius=32, fill=255)
+            # 3. Floating card with rounded corners, subtle glowing border and soft ambient shadow
+            fg_canvas = bg.convert("RGBA")
+            shadow_offset = 12
+            shadow_img = Image.new("RGBA", (fg_w + 32, fg_h + 32), (0, 0, 0, 0))
+            draw_sh = ImageDraw.Draw(shadow_img)
+            draw_sh.rounded_rectangle([(8, 8), (fg_w + 24, fg_h + 24)], radius=24, fill=(0, 0, 0, 160))
+            shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(radius=12))
+            fg_canvas.alpha_composite(shadow_img, (fg_x - 16, fg_y - 16 + shadow_offset))
 
-                bg.paste(fg, (card_x, card_y), mask)
-                draw = ImageDraw.Draw(bg)
-                draw.rounded_rectangle(
-                    [(card_x - 3, card_y - 3), (card_x + card_w + 3, card_y + card_h + 3)],
-                    radius=35,
-                    outline=accent_color,
-                    width=4
-                )
-                final_canvas = bg
-            else:
-                scale = max(target_w / src_w, target_h / src_h)
-                new_w, new_h = int(src_w * scale), int(src_h * scale)
-                scaled = raw_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                crop_x = (new_w - target_w) // 2
-                crop_y = (new_h - target_h) // 2
-                final_canvas = scaled.crop((crop_x, crop_y, crop_x + target_w, crop_y + target_h))
+            mask = Image.new("L", (fg_w, fg_h), 0)
+            draw_mask = ImageDraw.Draw(mask)
+            draw_mask.rounded_rectangle([(0, 0), (fg_w, fg_h)], radius=22, fill=255)
+
+            fg_canvas.paste(scaled_fg, (fg_x, fg_y), mask)
+
+            draw_border = ImageDraw.Draw(fg_canvas)
+            draw_border.rounded_rectangle([(fg_x, fg_y), (fg_x + fg_w, fg_y + fg_h)], radius=22, outline=accent_color, width=3)
+            final_canvas = fg_canvas.convert("RGB")
 
             # Modern pill badge
             draw = ImageDraw.Draw(final_canvas)
@@ -1336,7 +1333,7 @@ class TaskHandlers:
 
                 # Alternating color and high-energy CapCut Pop-in Bounce Jump with actual position jump (\move) & scale pop
                 style = "TikTokYellow" if (g_idx % 2 == 0) else "TikTokWhite"
-                bounce_tag = "{\\move(540,1170,540,1140,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
+                bounce_tag = "{\\move(540,1480,540,1450,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
                 ass_events.append(f"Dialogue: 0,{_to_ass_time(g_start)},{_to_ass_time(g_end)},{style},,0,0,0,,{bounce_tag}{grp_text}")
 
                 start_ms = int(g_start * 1000)
@@ -1376,7 +1373,7 @@ class TaskHandlers:
 
                     sub_text = " ".join(sub_grp).strip().rstrip('. ,;:-\t\n').upper()
                     style = "TikTokYellow" if (g_counter % 2 == 0) else "TikTokWhite"
-                    bounce_tag = "{\\move(540,1170,540,1140,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
+                    bounce_tag = "{\\move(540,1480,540,1450,0,130)\\an5\\fscx55\\fscy55\\t(0,100,\\fscx138\\fscy138)\\t(100,170,\\fscx100\\fscy100)}"
 
                     start_cs = _to_ass_time(b_start_ms / 1000.0)
                     end_cs = _to_ass_time(b_end_ms / 1000.0)
