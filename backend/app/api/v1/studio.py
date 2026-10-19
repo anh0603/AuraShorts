@@ -12,7 +12,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
-from fastapi import APIRouter, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, HTTPException, status, UploadFile, File, Request
 from pydantic import BaseModel, Field
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
@@ -1256,6 +1256,14 @@ async def get_gdrive_status():
     """Returns Google Drive connection and storage status."""
     from app.services.storage.google_drive_service import GoogleDriveService
     return ApiResponse(success=True, data=GoogleDriveService.get_status())
+
+
+@router.get("/gdrive/stream/{file_id}")
+async def stream_gdrive_video(file_id: str, request: Request):
+    """Streams raw MP4 directly from Google Drive 5TB with byte-range support."""
+    from app.services.storage.google_drive_service import GoogleDriveService
+    range_header = request.headers.get("range")
+    return GoogleDriveService.get_media_stream_response(file_id, range_header)
 
 
 class GDriveConfigRequest(BaseModel):

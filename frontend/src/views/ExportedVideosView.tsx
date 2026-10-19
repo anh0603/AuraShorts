@@ -976,6 +976,7 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
         const hasCloud = Boolean(gdriveId || activeVideoModal.gdrive_preview_url);
         const isCloudMode = modalPlayerSource === 'cloud' || !hasLocal;
         const cloudPreviewUrl = activeVideoModal.gdrive_preview_url || (gdriveId ? `https://drive.google.com/file/d/${gdriveId}/preview` : null);
+        const cloudDirectStreamUrl = gdriveId ? `/api/v1/studio/gdrive/stream/${gdriveId}` : null;
 
         return (
           <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -999,6 +1000,17 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
               {hasLocal && hasCloud && (
                 <div className="bg-slate-900/90 px-4 py-2 border-b border-white/5 flex items-center justify-center gap-2">
                   <button
+                    onClick={() => setModalPlayerSource('local')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+                      !isCloudMode
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Film className="w-3.5 h-3.5" />
+                    <span>File Máy Tính (Nhanh)</span>
+                  </button>
+                  <button
                     onClick={() => setModalPlayerSource('cloud')}
                     className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
                       isCloudMode
@@ -1009,29 +1021,24 @@ export const ExportedVideosView: React.FC<ExportedVideosViewProps> = ({
                     <Cloud className="w-3.5 h-3.5" />
                     <span>Google Drive Cloud (0 MB)</span>
                   </button>
-                  <button
-                    onClick={() => setModalPlayerSource('local')}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
-                      !isCloudMode
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                        : 'bg-white/5 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Film className="w-3.5 h-3.5" />
-                    <span>File Máy Tính</span>
-                  </button>
                 </div>
               )}
 
               {/* Player Stage */}
               <div className="relative aspect-[9/16] bg-black flex items-center justify-center max-h-[70vh]">
-                {isCloudMode && cloudPreviewUrl ? (
-                  <iframe
-                    src={cloudPreviewUrl}
-                    className="w-full h-full border-0"
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    title={activeVideoModal.title}
+                {!isCloudMode && hasLocal ? (
+                  <video
+                    src={getMediaFullUrl(activeVideoModal.video_url)}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                ) : cloudDirectStreamUrl ? (
+                  <video
+                    src={getMediaFullUrl(cloudDirectStreamUrl)}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
                   />
                 ) : hasLocal ? (
                   <video

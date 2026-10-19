@@ -490,3 +490,58 @@ class GoogleDriveService:
             "freed_mb": freed_mb,
             "deleted_files": deleted_files
         }
+
+    @classmethod
+    def get_media_stream_response(cls, file_id: str, range_header: Optional[str] = None):
+        """
+        Proxies raw MP4 byte stream from Google Drive with HTTP 206 Partial Content support,
+        bypassing Google's web transcoding delay.
+        """
+        import httpx
+        from fastapi.responses import StreamingResponse, Response
+        import google.auth.transport.requests
+
+        if not file_id:
+            return Response(status_code=400, content="file_id is required")
+
+        creds = cls.get_credentials()
+        if not creds:
+            return Response(status_code=401, content="Google Drive not authenticated")
+
+        req = google.auth.transport.requests.Request()
+        if creds.expired or not creds.token:
+            creds.refresh(req)
+
+        headers = {"Authorization": f"Bearer {creds.token}"}
+        if range_header:
+            headers["Range"] = range_header
+
+        client = httpx.Client(timeout=60.0)
+        drive_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+
+        req_proxy = client.build_request("GET", drive_url, headers=headers)
+        res_proxy = client.send(req_proxy, stream=True)
+
+        resp_headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Type": res_proxy.headers.get("content-type", "video/mp4"),
+        }
+        if "content-range" in res_proxy.headers:
+            resp_headers["Content-Range"] = res_proxy.headers["content-range"]
+        if "content-length" in res_proxy.headers:
+            resp_headers["Content-Length"] = res_proxy.headers["content-length"]
+
+        def _iter_chunks():
+            try:
+                for chunk in res_proxy.iter_bytes(chunk_size=1024 * 256):
+                    yield chunk
+            finally:
+                res_proxy.close()
+                client.close()
+
+        return StreamingResponse(
+            _iter_chunks(),
+            status_code=res_proxy.status_code,
+            headers=resp_headers,
+            media_type="video/mp4"
+        )
