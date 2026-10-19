@@ -498,6 +498,24 @@ export const StudioApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  async rewriteScript(payload: {
+    project_id?: string;
+    title: string;
+    scenes?: any[];
+    style?: string;
+    target_duration?: number;
+    scene_index?: number;
+  }): Promise<ApiResponse<{
+    scenes: any[];
+    message: string;
+    rewritten_index?: number;
+  }>> {
+    return request<any>('/studio/rewrite-script', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 export interface ApiExportedVideo {

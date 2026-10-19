@@ -114,6 +114,11 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
   const [renderCompletedSuccessfully, setRenderCompletedSuccessfully] = useState(false);
   const [qualityAudit, setQualityAudit] = useState<any>(null);
 
+  // AI Script Copilot State
+  const [scriptStyle, setScriptStyle] = useState<'engaging' | 'dramatic' | 'curiosity' | 'deep_dive' | 'conversational' | 'national'>('engaging');
+  const [isRewritingAll, setIsRewritingAll] = useState(false);
+  const [isRewritingSingle, setIsRewritingSingle] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
@@ -544,6 +549,61 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
     }
   };
 
+  const handleRewriteAll = async () => {
+    setIsRewritingAll(true);
+    showToast(`Đang nhờ AI viết lại toàn bộ kịch bản theo phong cách ${scriptStyle}...`, 'info', 4000);
+    try {
+      const res = await StudioApi.rewriteScript({
+        project_id: project.id,
+        title: project.title,
+        scenes: project.scenes,
+        style: scriptStyle,
+        target_duration: project.target_duration_seconds || 60
+      });
+      if (res.success && res.data?.scenes && res.data.scenes.length > 0) {
+        onUpdateProject({
+          ...project,
+          scenes: res.data.scenes,
+          scenes_count: res.data.scenes.length,
+          target_duration_seconds: Math.round(res.data.scenes.reduce((a: number, b: any) => a + (b.estimated_duration_seconds || 5), 0))
+        });
+        showToast(res.data.message || 'Đã viết lại toàn bộ kịch bản cuốn hút hơn!', 'success', 4000);
+      } else {
+        showToast(res.error?.message || 'Không thể viết lại kịch bản, vui lòng thử lại!', 'warning');
+      }
+    } catch (e: any) {
+      showToast(`Lỗi khi viết lại kịch bản: ${e?.message || 'Không xác định'}`, 'warning');
+    } finally {
+      setIsRewritingAll(false);
+    }
+  };
+
+  const handleRewriteSingleScene = async (index: number) => {
+    setIsRewritingSingle(true);
+    showToast(`Đang tối ưu phân cảnh 0${index + 1}...`, 'info', 3000);
+    try {
+      const res = await StudioApi.rewriteScript({
+        project_id: project.id,
+        title: project.title,
+        scenes: project.scenes,
+        style: scriptStyle,
+        scene_index: index
+      });
+      if (res.success && res.data?.scenes) {
+        onUpdateProject({
+          ...project,
+          scenes: res.data.scenes,
+          target_duration_seconds: Math.round(res.data.scenes.reduce((a: number, b: any) => a + (b.estimated_duration_seconds || 5), 0))
+        });
+        showToast(`Đã tối ưu phân cảnh 0${index + 1} cuốn hút hơn!`, 'success');
+      }
+    } catch (e: any) {
+      showToast(`Lỗi tối ưu cảnh: ${e?.message || 'Không xác định'}`, 'warning');
+    } finally {
+      setIsRewritingSingle(false);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -850,8 +910,59 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
             </button>
           </div>
 
+          {/* AI Script Copilot Panel */}
+          <div className="p-3 rounded-2xl bg-gradient-to-r from-indigo-950/70 via-purple-950/40 to-slate-900 border border-indigo-500/30 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-indigo-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                AI Biên Kịch (Triệu View TikTok/Shorts)
+              </span>
+              <span className="text-[10px] text-emerald-400 font-medium">
+                Văn nói tự nhiên
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-slate-400 block">Phong cách kịch bản:</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <select
+                  value={scriptStyle}
+                  onChange={(e) => setScriptStyle(e.target.value as any)}
+                  className="w-full px-2.5 py-1.5 rounded-xl bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="engaging">⚡ Hào Hứng & Cuốn Hút</option>
+                  <option value="dramatic">🔥 Gay Cấn & Giật Gân</option>
+                  <option value="curiosity">❓ Tò Mò & Bí Ẩn</option>
+                  <option value="deep_dive">📊 Phân Tích Chuyên Sâu</option>
+                  <option value="conversational">🗣️ Kể Chuyện Đời Thường</option>
+                  <option value="national">🇻🇳 Tự Hào Dân Tộc</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={handleRewriteAll}
+                  disabled={isRewritingAll}
+                  className="w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20 disabled:opacity-50 transition"
+                  title="Yêu cầu AI viết lại toàn bộ kịch bản tự nhiên, cuốn hút hơn"
+                >
+                  {isRewritingAll ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang viết...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                      <span>Viết Lại Toàn Bộ</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Scene Cards List */}
-          <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
             {scenes.map((scene, idx) => {
               const isSelected = idx === selectedSceneIndex;
               return (
@@ -896,9 +1007,19 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({
                   />
 
                   <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
-                    <span className="truncate max-w-[220px] italic">
-                      Visual: {scene.visual_intent}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRewriteSingleScene(idx);
+                      }}
+                      disabled={isRewritingSingle}
+                      className="text-[10px] px-2 py-0.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 transition"
+                      title="Nhờ AI viết lại phân cảnh này cho hay hơn"
+                    >
+                      <Sparkles className="w-3 h-3 text-cyan-400" />
+                      <span>Tối ưu cảnh</span>
+                    </button>
                     <span className="text-[10px] text-indigo-400 font-mono">
                       {scene.layout_type}
                     </span>

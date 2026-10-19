@@ -365,7 +365,11 @@ class AiRouter:
             # Extract claims from prompt if present
             extracted_claims = []
             if "Luận điểm chính:" in prompt:
-                raw_claims_part = prompt.split("Luận điểm chính:")[-1].split("Thời lượng yêu cầu:")[0].strip()
+                raw_claims_part = prompt.split("Luận điểm chính:")[-1]
+                for delim in ["Nội dung nguồn:", "Nội dung:", "Thời lượng yêu cầu:", "QUY TẮC"]:
+                    if delim in raw_claims_part:
+                        raw_claims_part = raw_claims_part.split(delim)[0]
+                raw_claims_part = raw_claims_part.strip()
                 try:
                     import ast
                     parsed_claims = ast.literal_eval(raw_claims_part)
@@ -377,10 +381,22 @@ class AiRouter:
 
             # Extract clean content from prompt if present
             clean_text_context = ""
-            if "Nội dung nguồn:" in prompt:
-                clean_text_context = prompt.split("Nội dung nguồn:")[-1].split("Thời lượng yêu cầu:")[0].strip()
-            elif "Nội dung:" in prompt:
-                clean_text_context = prompt.split("Nội dung:")[-1].split("Thời lượng yêu cầu:")[0].strip()
+            for tag in ["Nội dung nguồn:", "Nội dung:"]:
+                if tag in prompt:
+                    raw_ctx = prompt.split(tag)[-1]
+                    for delim in ["Thời lượng yêu cầu:", "QUY TẮC", "Bắt buộc trả về"]:
+                        if delim in raw_ctx:
+                            raw_ctx = raw_ctx.split(delim)[0]
+                    clean_text_context = raw_ctx.strip()
+                    break
+
+            # Strip any residual prompt tags from claims
+            sanitized_claims = []
+            for c in extracted_claims:
+                c_clean = re.sub(r'^(nội dung nguồn|thời lượng yêu cầu|quy tắc|tiêu đề)[:,\s]+', '', c, flags=re.IGNORECASE).strip()
+                if len(c_clean) > 10:
+                    sanitized_claims.append(c_clean)
+            extracted_claims = sanitized_claims
 
             # Construct viral, high-retention scenes using Viral Storyboard Engine (no repeated phrases)
             try:

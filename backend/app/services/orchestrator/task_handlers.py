@@ -143,13 +143,13 @@ def _match_topic(text: str, keywords: List[str]) -> bool:
     return False
 
 
-def make_viral_hook(title: str) -> str:
+def make_viral_hook(title: str, niche: str = "engaging") -> str:
     """
     Creates a punchy, viral opening hook (< 18 words) that triggers curiosity.
-    Avoids robotic prefixes like 'Nóng: [entire 30-word title]!'.
+    Avoids robotic prefixes like 'Nóng: [entire title]' or 'Sự thật bất ngờ vừa được công bố'.
     """
     if not title:
-        return "Thông tin nóng đang nhận được sự quan tâm lớn của đông đảo dư luận."
+        return "Thông tin nóng đang khiến cộng đồng mạng dậy sóng trong những giờ qua."
 
     clean_t = re.sub(r'^(nóng|tin nóng|tiêu điểm|bản tin|vụ việc)[:,\s\-]+', '', title.strip(), flags=re.IGNORECASE)
     for sfx in [" - VnExpress", " | Báo Dân trí", " - Báo Tuổi Trẻ", " - VietNamNet", " | VOV.VN", " | ANTD.VN"]:
@@ -167,51 +167,53 @@ def make_viral_hook(title: str) -> str:
     ]
     if _match_topic(t_lower, crime_keywords):
         if "biển số giả" in t_lower:
-            return "Gắn biển số giả phóng trên cao tốc: Tài xế nhận ngay cái kết đắng."
+            return "Gắn biển số giả phóng trên cao tốc: Cái kết đắng đến ngay sau đó!"
         elif any(k in t_lower for k in ["đánh nhau", "ẩu đả", "xô xát", "hành hung", "hỗn chiến"]):
-            return f"Hỗn chiến trên đường trả giá đắt: {clean_t.rstrip('.!?')}."
+            return "Chỉ vì va chạm nhỏ trên đường mà nhận ngay cái kết đắt giá!"
         elif "tai nạn" in t_lower:
-            return f"Cảnh báo tai nạn giao thông nghiêm trọng: {clean_t.rstrip('.!?')}."
+            return "Cảnh báo nguy hiểm đến nghẹt thở: Vụ tai nạn khiến ai nấy đều bàng hoàng!"
         elif any(k in t_lower for k in ["tạm giữ", "bắt giữ", "khởi tố"]):
-            return f"Lưới trời lồng lộng: {clean_t.rstrip('.!?')}."
+            return "Lưới trời lồng lộng: Cơ quan chức năng đã chính thức vào cuộc xử lý nghiêm!"
         elif "xử phạt" in t_lower:
-            return f"Cái giá phải trả cho hành vi coi thường luật pháp: {clean_t.rstrip('.!?')}."
+            return "Cái giá cực đắt cho hành vi coi thường luật pháp vừa bị phơi bày!"
         else:
-            return f"Vụ việc gây xôn xao dư luận: {clean_t.rstrip('.!?')}."
+            return f"Vụ việc chấn động vừa xảy ra đang khiến cộng đồng mạng vô cùng phẫn nộ!"
 
     # Pattern 2: Infrastructure / Transportation / Megaprojects
     infra_keywords = ["cao tốc", "đường sắt", "thông xe", "hạ tầng", "sân bay", "bắc nam", "khởi công", "khánh thành", "cầu vượt", "đại dự án"]
     if _match_topic(t_lower, infra_keywords):
         if "thông xe" in t_lower or "hoàn thành" in t_lower or "khánh thành" in t_lower:
-            return "Chính thức thông xe toàn tuyến: Cột mốc lịch sử mở toang không gian phát triển."
+            return "Chính thức thông xe: Cột mốc lịch sử mà hàng triệu người dân mong chờ!"
         else:
-            return f"Đại công trình nghìn tỷ chuyển động thần tốc: {clean_t.rstrip('.!?')}."
+            return f"Hình ảnh đại công trình nghìn tỷ vừa lộ diện khiến nhiều người phải ngỡ ngàng!"
 
-    # Pattern 3: Tech / AI / Breakthrough Science (strictly contextual phrases, never bare 'ai' substring)
-    tech_keywords = ["pin thể rắn", "xe điện", "trí tuệ nhân tạo", "mô hình ai", "công nghệ ai", "bán dẫn", "vi mạch", "chế tạo robot", "bệnh ung thư", "kỳ tích y khoa"]
+    # Pattern 3: Tech / AI / Breakthrough Science / Renewable Energy
+    tech_keywords = ["pin thể rắn", "xe điện", "trí tuệ nhân tạo", "mô hình ai", "công nghệ ai", "bán dẫn", "vi mạch", "chế tạo robot", "bệnh ung thư", "kỳ tích y khoa", "năng lượng tái tạo", "điện gió", "môi trường"]
     if _match_topic(t_lower, tech_keywords):
         if "pin" in t_lower or "xe điện" in t_lower:
-            return "Chạy 1.000km chỉ một lần sạc: Kỷ nguyên mới của xe điện chính thức bắt đầu."
+            return "Chạy 1.000km chỉ một lần sạc: Kỷ nguyên mới của xe điện chính thức bắt đầu!"
         elif "ung thư" in t_lower or "y tế" in t_lower:
-            return "Kỳ tích y khoa chấn động: Trí tuệ nhân tạo phát hiện sớm mầm mống bệnh nan y."
+            return "Kỳ tích y khoa chấn động: Đột phá mới mở ra hy vọng sống cho hàng triệu người!"
+        elif "năng lượng" in t_lower or "môi trường" in t_lower or "điện gió" in t_lower:
+            return "Bước ngoặt lịch sử về năng lượng sạch vừa thiết lập kỷ lục chưa từng có!"
         else:
-            return f"Đột phá công nghệ thay đổi tương lai: {clean_t.rstrip('.!?')}."
+            return f"Một bước tiến công nghệ mới vừa xuất hiện có thể thay đổi hoàn toàn tương lai!"
 
     # Pattern 4: Administrative resolution / Public Service (Phú Quốc, chính quyền, hồ sơ)
     if _match_topic(t_lower, ["giải quyết", "hồ sơ", "tồn đọng", "phú quốc", "đặc khu", "cải cách"]):
-        return "Giải quyết thần tốc gần 1.000 hồ sơ tồn đọng: Phú Quốc tạo bước ngoặt lớn."
+        return "Cú bứt phá ngoạn mục: Giải quyết thần tốc hàng nghìn hồ sơ tồn đọng chỉ trong vài ngày!"
 
-    # Pattern 5: General viral hook under 18 words
+    # Pattern 5: National / History
+    if _match_topic(t_lower, ["lịch sử", "trường sơn", "chiến thắng", "kháng chiến", "tự hào", "quân đội", "anh hùng"]):
+        return "Mốc son chói lọi của dân tộc mà mỗi người Việt Nam đều không thể nào quên!"
+
+    # Pattern 6: General dynamic viral hook (< 16 words)
     words = clean_t.split()
-    if len(words) <= 15:
-        return f"Sự thật bất ngờ vừa được công bố: {clean_t.rstrip('.!?')}."
+    if len(words) <= 12:
+        return f"Bạn có tin nổi không? Sự việc {clean_t.rstrip('.!?')} đang gây sốt!"
     else:
-        clause = " ".join(words[:14])
-        for sep in [",", ";", " - "]:
-            if sep in clause:
-                clause = clause.split(sep)[0]
-                break
-        return f"Diễn biến nóng vừa được công bố: {clause.rstrip('. ,;:')}."
+        clause = " ".join(words[:11]).rstrip('. ,;:')
+        return f"Cú sốc vừa được hé lộ: {clause} khiến dư luận sững sờ!"
 
 
 def trim_to_clause(text: str, max_words: int = 24) -> str:
@@ -230,19 +232,19 @@ def trim_to_clause(text: str, max_words: int = 24) -> str:
     return " ".join(words[:max_words]).rstrip(',;:- ') + "."
 
 
-def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_scenes: int = 10) -> List[Dict[str, Any]]:
+def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_scenes: int = 10, niche: str = "engaging") -> List[Dict[str, Any]]:
     """
     Constructs an engaging, viral TikTok/Shorts storyboard matching exact scene count.
     Guarantees:
-    - Punchy Hook (< 18 words)
-    - Clean narrative arc (Context -> Paradox -> Details -> Official Action -> Takeaway)
+    - Punchy Hook (< 18 words) that triggers curiosity
+    - Clean narrative arc (Context -> Conflict / Revelation -> Details -> Impact -> Takeaway)
     - Zero repetitive bureaucratic filler phrases
-    - Engaging final CTA
+    - Engaging final CTA with curiosity-driven discussion prompt
     """
     scenes = []
 
     # 1. Viral Hook
-    hook_str = make_viral_hook(title)
+    hook_str = make_viral_hook(title, niche=niche)
     hook_words = len(hook_str.split())
     scenes.append({
         "scene_id": 1,
@@ -256,21 +258,27 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
     pool = []
     seen = set()
 
+    # Pre-clean raw claims
     for c in (claims or []):
         c_str = c if isinstance(c, str) else (c.get("claim_text", "") if isinstance(c, dict) else "")
+        # Remove any leaked prompt tags
+        c_str = re.sub(r'(nội dung nguồn|thời lượng yêu cầu|quy tắc|tiêu đề|luận điểm chính)[:,\s]+', '', str(c_str), flags=re.IGNORECASE)
         c_clean = clean_script_text(c_str)
         norm = re.sub(r'\W+', '', c_clean.lower())
         if len(c_clean) > 20 and norm not in seen:
             seen.add(norm)
             pool.append(trim_to_clause(c_clean, 24))
 
+    # Pre-clean source article content
     if clean_text:
-        raw_sents = re.split(r'(?<=[.!?])\s+|\n+', clean_text)
+        # Strip any prompt tags that might have sneaked in
+        clean_text_sanitized = re.sub(r'(nội dung nguồn|thời lượng yêu cầu|quy tắc|tiêu đề|luận điểm chính)[:,\s]+', '', clean_text, flags=re.IGNORECASE)
+        raw_sents = re.split(r'(?<=[.!?])\s+|\n+', clean_text_sanitized)
         for s in raw_sents:
             s_clean = clean_script_text(s)
             norm = re.sub(r'\W+', '', s_clean.lower())
             if len(s_clean) > 25 and norm not in seen:
-                if not any(bad in s_clean.lower() for bad in ["ảnh:", "video:", "nguồn:", "xem thêm:", "liên hệ:"]):
+                if not any(bad in s_clean.lower() for bad in ["ảnh:", "video:", "nguồn:", "xem thêm:", "liên hệ:", "báo điện tử", "phóng viên"]):
                     seen.add(norm)
                     pool.append(trim_to_clause(s_clean, 24))
 
@@ -284,52 +292,83 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
     ]
     infra_keywords = ["cao tốc", "đường sắt", "thông xe", "hạ tầng", "sân bay", "bắc nam", "khởi công", "khánh thành", "cầu vượt", "đại dự án"]
     tech_keywords = ["pin thể rắn", "xe điện", "trí tuệ nhân tạo", "mô hình ai", "công nghệ ai", "bán dẫn", "vi mạch", "chế tạo robot", "bệnh ung thư", "kỳ tích y khoa"]
+    green_keywords = ["năng lượng tái tạo", "điện gió", "môi trường", "sinh thái", "net zero", "năng lượng mặt trời", "biến đổi khí hậu"]
     admin_keywords = ["giải quyết", "hồ sơ", "tồn đọng", "phú quốc", "đặc khu", "cải cách"]
 
     if _match_topic(title, crime_keywords):
         connectors = [
-            "Vụ việc bắt nguồn từ va chạm giao thông nhưng các bên lại dùng bạo lực để giải quyết mâu thuẫn.",
-            "Cơ quan công an đã nhanh chóng vào cuộc khám nghiệm hiện trường, lấy lời khai và tạm giữ các đối tượng.",
-            "Hành vi gây rối trật tự công cộng và cố ý gây thương tích sẽ bị xử lý nghiêm minh theo quy định pháp luật.",
-            "Cơ quan chức năng khẳng định sẽ làm rõ mọi tình tiết, không có vùng cấm đối với mọi hành vi vi phạm.",
-            "Vụ việc là bài học đắt giá cho sự nóng nảy, thiếu kiềm chế khi tham gia lưu thông trên đường."
+            "Mọi chuyện bắt đầu từ một mâu thuẫn bất ngờ nhưng các bên lại chọn cách bạo lực để giải quyết.",
+            "Tình huống căng thẳng nhanh chóng leo thang khiến những người chứng kiến xung quanh vô cùng bức xúc.",
+            "Lực lượng chức năng đã lập tức vào cuộc, trích xuất hình ảnh hiện trường và triệu tập các cá nhân liên quan.",
+            "Pháp luật luôn có sự nghiêm minh và tuyệt đối không có bất kỳ ngoại lệ nào cho hành vi coi thường trật tự.",
+            "Một bài học đắt giá cho sự bốc đồng: Chỉ một phút mất bình tĩnh có thể phải trả giá bằng cả tương lai."
         ]
+        cta = "Bạn nghĩ hành vi này nên bị xử phạt thế nào cho thích đáng? Hãy bình luận bên dưới và bấm theo dõi kênh nhé!"
     elif _match_topic(title, infra_keywords):
         connectors = [
-            "Công trình trọng điểm được thi công thần tốc với chất lượng kỹ thuật được giám sát gắt gao.",
-            "Hàng trăm kỹ sư và công nhân đã làm việc xuyên ngày đêm để hoàn thành vượt tiến độ đề ra.",
-            "Dự án hoàn thành mở ra trục giao thông huyết mạch, rút ngắn đáng kể thời gian di chuyển.",
-            "Tuyến đường được kỳ vọng sẽ tạo cú hích tăng trưởng kinh tế mạnh mẽ cho toàn khu vực.",
-            "Người dân và cộng đồng doanh nghiệp bày tỏ sự phấn khởi trước diện mạo hạ tầng mới."
+            "Những hình ảnh thực tế đầu tiên vừa được hé lộ đã khiến cộng đồng vô cùng phấn khởi và tự hào.",
+            "Hàng trăm kỹ sư và công nhân đã làm việc xuyên ngày đêm, vượt qua muôn vàn khó khăn trên công trường.",
+            "Tuyến huyết mạch này khi vận hành sẽ rút ngắn một nửa thời gian di chuyển và giảm hẳn áp lực giao thông.",
+            "Không chỉ vậy, đây còn là đòn bẩy kinh tế chiến lược kết nối giao thương giữa các vùng trọng điểm.",
+            "Diện mạo hạ tầng đất nước đang thực sự thay đổi từng ngày với những công trình vươn tầm thời đại."
         ]
+        cta = "Bạn đã sẵn sàng trải nghiệm tuyến đường mới này chưa? Hãy để lại cảm nghĩ và follow kênh nhé!"
     elif _match_topic(title, tech_keywords):
         connectors = [
-            "Đột phá này đạt được nhờ nghiên cứu bền bỉ và ứng dụng vật liệu thế hệ hoàn toàn mới.",
-            "Kết quả thử nghiệm thực tế vượt xa kỳ vọng và mở ra tiềm năng thương mại hóa rộng lớn.",
-            "Các chuyên gia đầu ngành đánh giá đây là bước nhảy vọt quan trọng của nền khoa học hiện đại.",
-            "Công nghệ mới giúp giải quyết triệt để các rào cản kỹ thuật mà trước đây chưa thể vượt qua.",
-            "Tương lai của ngành công nghiệp đang bước sang một trang mới với những tiềm năng vô hạn."
+            "Điều tưởng chừng chỉ có trong các bộ phim viễn tưởng nay đã chính thức bước ra ngoài đời thực.",
+            "Đột phá này đạt được nhờ nghiên cứu bền bỉ và ứng dụng những công nghệ thế hệ hoàn toàn mới.",
+            "Các chuyên gia hàng đầu khẳng định đây là bước nhảy vọt quan trọng làm thay đổi toàn bộ cuộc chơi.",
+            "Không chỉ tối ưu hóa hiệu năng, giải pháp này còn mở ra tiềm năng ứng dụng khổng lồ trong tương lai gần.",
+            "Cả thế giới đang dõi theo bước chuyển mình ngoạn mục này với những kỳ vọng to lớn."
         ]
+        cta = "Bạn có tin công nghệ này sẽ sớm phổ biến tại Việt Nam không? Chia sẻ ngay góc nhìn của bạn nhé!"
+    elif _match_topic(title, green_keywords):
+        connectors = [
+            "Đây là bước chuyển mình quan trọng nhằm bảo vệ lá phổi xanh và hướng tới tương lai bền vững.",
+            "Những con số ấn tượng vừa được công bố cho thấy quyết tâm mạnh mẽ trong việc phát triển năng lượng sạch.",
+            "Các giải pháp công nghệ xanh đang được triển khai đồng loạt và nhận được sự hưởng ứng rất lớn từ cộng đồng.",
+            "Mỗi bước tiến hôm nay đều là nền tảng quý giá cho cuộc sống trong lành của các thế hệ mai sau.",
+            "Một tín hiệu vô cùng đáng mừng cho thấy nỗ lực chuyển đổi xanh đang gặt hái những quả ngọt đầu tiên."
+        ]
+        cta = "Bạn đánh giá thế nào về bước tiến đáng mừng này? Hãy để lại bình luận và đăng ký kênh nhé!"
     elif _match_topic(title, admin_keywords):
         connectors = [
-            "Sau một tuần làm việc quyết liệt cả ngày lẫn đêm, cán bộ công chức đã xử lý dứt điểm khối lượng công việc tồn đọng.",
-            "Hàng nghìn hồ sơ thủ tục hành chính bị chậm trễ nay đã được bàn giao tận tay người dân và doanh nghiệp.",
-            "Sự vào cuộc quyết liệt của chính quyền địa phương nhận được sự đồng thuận và đánh giá rất cao từ cộng đồng.",
-            "Các giải pháp số hóa quy trình đang tiếp tục được đẩy mạnh nhằm duy trì hiệu quả công vụ lâu dài.",
-            "Đây là bước chuyển mình quan trọng nâng cao chất lượng phục vụ và củng cố niềm tin của nhân dân."
+            "Sau thời gian nỗ lực giải quyết cả ngày lẫn đêm, hàng loạt hồ sơ chậm trễ nay đã được bàn giao tận tay người dân.",
+            "Quy trình xử lý được đổi mới mạnh mẽ giúp người dân và doanh nghiệp tiết kiệm rất nhiều thời gian công sức.",
+            "Sự vào cuộc quyết liệt này đã nhận được sự đồng tình và đánh giá rất cao từ cộng đồng.",
+            "Các giải pháp số hóa đang tiếp tục được đẩy mạnh nhằm nâng cao chất lượng phục vụ lâu dài.",
+            "Một bước chuyển mình tích cực củng cố niềm tin và tạo động lực phát triển mới cho địa phương."
         ]
+        cta = "Bạn cảm thấy sự thay đổi này như thế nào? Hãy chia sẻ suy nghĩ bên dưới và theo dõi kênh nhé!"
     else:
         connectors = [
-            "Toàn bộ diễn biến đã được các đơn vị liên quan phối hợp rà soát và xử lý khẩn trương.",
-            "Kết quả đạt được thể hiện nỗ lực rất lớn trong công tác chỉ đạo và triển khai đồng bộ.",
-            "Sự việc đang tiếp tục tạo hiệu ứng tích cực và nhận được sự đồng thuận cao từ người dân.",
-            "Các giải pháp tiếp theo đang được đẩy mạnh nhằm duy trì hiệu quả bền vững lâu dài.",
-            "Đây là minh chứng rõ nét cho quyết tâm đổi mới và tinh thần trách nhiệm vì cộng đồng."
+            "Câu chuyện này đang nhanh chóng trở thành tâm điểm chú ý trên khắp các diễn đàn mạng xã hội.",
+            "Điều khiến dư luận bất ngờ nhất chính là những tình tiết mới vừa được hé lộ xung quanh sự việc.",
+            "Rất nhiều luồng ý kiến đa chiều đã nổ ra, tạo nên những cuộc thảo luận vô cùng sôi nổi.",
+            "Dù nhìn nhận ở góc độ nào, sự việc này cũng phản ánh một góc nhìn thực tế rất đáng để chúng ta suy ngẫm.",
+            "Những diễn biến tiếp theo chắc chắn sẽ còn thu hút sự quan tâm lớn của đông đảo cộng đồng."
         ]
+        cta = "Quan điểm của bạn về câu chuyện này thế nào? Hãy để lại bình luận và bấm đăng ký kênh để cập nhật tin mới!"
+
+    # Spoken transitional prefixes to make narrative flow naturally
+    spoken_prefixes = [
+        "Theo thông tin mới nhất, ",
+        "Đáng chú ý là ",
+        "Điều khiến nhiều người bất ngờ là ",
+        "Chưa dừng lại ở đó, ",
+        "Cụ thể hơn, ",
+        "Đặc biệt, ",
+        "Theo những chia sẻ mới đây, "
+    ]
 
     for i in range(needed_body):
         if i < len(pool):
             sent = pool[i]
+            # Add a natural spoken connective if sentence doesn't already have one
+            prefix = spoken_prefixes[i % len(spoken_prefixes)]
+            lower_first = sent[0].lower() + sent[1:]
+            if not any(sent.lower().startswith(p.lower().strip()) for p in ["mới đây", "theo", "đáng chú ý", "điều", "chưa", "cụ thể", "đặc biệt"]):
+                sent = prefix + lower_first
         else:
             conn_idx = (i - len(pool)) % len(connectors)
             sent = connectors[conn_idx]
@@ -345,7 +384,6 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
         })
 
     # Call to Action
-    cta = "Bạn nghĩ sao về diễn biến này? Hãy để lại bình luận và bấm theo dõi kênh để cập nhật tin nóng nhé!"
     cta_words = len(cta.split())
     scenes.append({
         "scene_id": len(scenes) + 1,
@@ -744,9 +782,23 @@ class TaskHandlers:
         else:
             num_scenes = 14
 
+        niche = input_payload.get("niche") or upstream_data.get("niche") or "engaging"
+
+        system_prompt = (
+            "Bạn là Chuyên gia Biên kịch Video Ngắn (TikTok, YouTube Shorts, Reels) triệu view hàng đầu Việt Nam.\n"
+            "Mục tiêu của bạn: Viết kịch bản giật gân, cuốn hút, khơi gợi tò mò cực độ (Curiosity Gap), giữ chân người xem 100% thời lượng.\n"
+            "NGUYÊN TẮC BẮT BUỘC:\n"
+            "1. 100% văn phong NÓI (conversational Vietnamese), tự nhiên, nhịp điệu dồn dập, như người thật đang kể chuyện trực tiếp cho khán giả.\n"
+            "2. TUYỆT ĐỐI CẤM văn phong báo chí hành chính, công văn, báo cáo ủy ban, hay 'văn mẫu' sáo rỗng (như 'toàn bộ diễn biến đã được rà soát', 'kết quả thể hiện nỗ lực rất lớn', 'theo ghi nhận thực tế', 'sự việc đang tiếp tục tạo hiệu ứng').\n"
+            "3. Mỗi phân cảnh chỉ chứa 1 câu súc tích (14-18 từ), kết nối mạch lạc bằng từ nối cảm xúc ('Thế nhưng...', 'Điều bất ngờ là...', 'Chưa dừng lại ở đó...', 'Đặc biệt...', 'Ngay lập tức...').\n"
+            "4. Phân cảnh 1 (hook): Cực sốc, đánh thẳng vào tâm lý tò mò hoặc mâu thuẫn lớn, dưới 18 từ, tuyệt đối không đọc lại nguyên văn tiêu đề.\n"
+            "5. Phân cảnh cuối (cta): Đặt một câu hỏi kích thích tranh luận mạnh mẽ để người xem bình luận sôi nổi."
+        )
+
         prompt = (
             f"Hãy viết kịch bản video ngắn 9:16 (TikTok, YouTube Shorts) bằng tiếng Việt cho chủ đề sau:\n"
             f"Tiêu đề: {title}\n"
+            f"Phong cách kịch bản: {niche}\n"
             f"Luận điểm chính: {claims}\n"
             f"Nội dung nguồn: {clean_text}\n"
             f"Thời lượng yêu cầu: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh chứa 14-18 từ tiếng Việt cuốn hút).\n"
@@ -770,6 +822,7 @@ class TaskHandlers:
                 ai_router.route_and_generate(
                     capability=AiCapability.STRUCTURED_OUTPUT,
                     prompt=prompt,
+                    system_prompt=system_prompt,
                     json_schema={"type": "object"},
                     fallback_mock=True
                 ),
@@ -784,7 +837,7 @@ class TaskHandlers:
                     raw_txt = sc.get("text", "")
                     clean_txt = clean_script_text(raw_txt)
                     if idx == 0 and len(clean_txt.split()) > 20:
-                        clean_txt = make_viral_hook(title)
+                        clean_txt = make_viral_hook(title, niche=niche)
                     sc["text"] = clean_txt
                     w_cnt = len(clean_txt.split())
                     sc["estimated_duration_seconds"] = round(max(3.8, (w_cnt / 2.8) + 0.3), 1)
@@ -803,7 +856,8 @@ class TaskHandlers:
                 title=title,
                 clean_text=clean_text or "",
                 claims=claims or [],
-                num_scenes=num_scenes
+                num_scenes=num_scenes,
+                niche=niche
             )
             script_payload = {
                 "title": title,

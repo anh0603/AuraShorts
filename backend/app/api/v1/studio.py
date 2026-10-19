@@ -308,6 +308,202 @@ async def synthesize_voice(req: SynthesizeVoiceRequest):
     )
 
 
+class RewriteScriptRequest(BaseModel):
+    project_id: Optional[str] = "default"
+    title: str = Field(..., description="Topic or video title")
+    scenes: Optional[List[Dict[str, Any]]] = None
+    style: Optional[str] = "engaging"  # dramatic, engaging, curiosity, deep_dive, conversational, national
+    target_duration: Optional[int] = 60
+    scene_index: Optional[int] = None  # If provided, rewrites only this 0-indexed scene
+
+
+@router.post("/rewrite-script", response_model=ApiResponse)
+async def rewrite_script(req: RewriteScriptRequest):
+    """
+    Rewrites an existing script or specific scene using elite short-form storytelling formulas.
+    Supports styles: dramatic, engaging, curiosity, deep_dive, conversational, national.
+    """
+    from app.services.ai.router import ai_router, AiCapability
+    from app.services.orchestrator.task_handlers import build_viral_storyboard, make_viral_hook, clean_script_text, _clean_json_text
+
+    title = req.title.strip()
+    style = req.style or "engaging"
+    existing_scenes = req.scenes or []
+    target_duration = req.target_duration or 60
+
+    style_descriptions = {
+        "dramatic": "Gay cấn, kịch tính, dồn dập, nhấn mạnh vào mâu thuẫn, biến cố nghẹt thở và hồi hộp.",
+        "engaging": "Hào hứng, cuốn hút, chuẩn viral TikTok/Reels, nhịp điệu nhanh và sôi động.",
+        "curiosity": "Tò mò, bí ẩn, gợi mở các câu hỏi khiến người xem không thể rời mắt.",
+        "deep_dive": "Phân tích chuyên sâu, sắc bén, bóc tách vấn đề bằng dữ kiện và logic thuyết phục.",
+        "conversational": "Kể chuyện đời thường, hóm hỉnh, gần gũi, như một người bạn đang tâm sự.",
+        "national": "Hào hùng, trang trọng, khơi dậy niềm tự hào dân tộc và khí phách Việt Nam."
+    }
+    style_desc = style_descriptions.get(style, style_descriptions["engaging"])
+
+    system_prompt = (
+        "Bạn là Chuyên gia Biên kịch Video Ngắn (TikTok, YouTube Shorts, Reels) triệu view hàng đầu Việt Nam.\n"
+        f"Phong cách kịch bản: {style_desc}\n"
+        "NGUYÊN TẮC BẮT BUỘC:\n"
+        "1. 100% văn phong NÓI (conversational Vietnamese), tự nhiên, nhịp điệu dồn dập, giàu cảm xúc, như người thật đang kể chuyện trực tiếp cho khán giả.\n"
+        "2. TUYỆT ĐỐI CẤM văn phong báo chí hành chính, công văn, báo cáo ủy ban, hay 'văn mẫu' sáo rỗng (như 'toàn bộ diễn biến đã được rà soát', 'kết quả thể hiện nỗ lực rất lớn', 'theo ghi nhận thực tế', 'sự việc đang tiếp tục tạo hiệu ứng').\n"
+        "3. Mỗi phân cảnh chỉ chứa 1 câu ngắn gọn, đắt giá (14-18 từ), kết nối mạch lạc bằng từ nối cảm xúc ('Thế nhưng...', 'Điều bất ngờ là...', 'Chưa dừng lại ở đó...', 'Đặc biệt...', 'Ngay lập tức...').\n"
+        "4. Phân cảnh 1 (hook): Cực sốc, đánh thẳng vào tâm lý tò mò hoặc mâu thuẫn lớn, dưới 18 từ, tuyệt đối không đọc lại nguyên văn tiêu đề.\n"
+        "5. Phân cảnh cuối (cta): Đặt một câu hỏi kích thích tranh luận mạnh mẽ để người xem bình luận sôi nổi."
+    )
+
+    # CASE A: Rewrite only 1 single scene
+    if req.scene_index is not None and 0 <= req.scene_index < len(existing_scenes):
+        idx = req.scene_index
+        target_scene = existing_scenes[idx]
+        current_text = target_scene.get("text", "")
+        is_hook = (idx == 0)
+        is_cta = (idx == len(existing_scenes) - 1)
+
+        single_prompt = (
+            f"Hãy viết lại duy nhất 1 câu lời bình bằng tiếng Việt cho phân cảnh video ngắn 9:16 sau:\n"
+            f"Chủ đề: {title}\n"
+            f"Vị trí phân cảnh: {'Cảnh 1 (Hook mở đầu)' if is_hook else ('Cảnh cuối (Kêu gọi hành động CTA)' if is_cta else f'Cảnh {idx + 1} (Thân bài)')}\n"
+            f"Nội dung hiện tại: {current_text}\n"
+            f"Phong cách: {style_desc}\n"
+            f"Yêu cầu: Viết 1 câu duy nhất (14-18 từ), cực kỳ cuốn hút, tự nhiên. Trả về đúng 1 câu tiếng Việt, không kèm giải thích."
+        )
+
+        new_text = ""
+        try:
+            content, _ = await asyncio.wait_for(
+                ai_router.route_and_generate(
+                    capability=AiCapability.TEXT_GENERATION,
+                    prompt=single_prompt,
+                    system_prompt=system_prompt,
+                    fallback_mock=True
+                ),
+                timeout=12.0
+            )
+            raw = content.strip().strip('"\'')
+            if raw and len(raw) > 10 and "{" not in raw:
+                new_text = clean_script_text(raw)
+        except Exception:
+            pass
+
+        if not new_text:
+            if is_hook:
+                new_text = make_viral_hook(title, niche=style)
+            elif is_cta:
+                new_text = "Quan điểm của bạn về câu chuyện này thế nào? Hãy để lại bình luận và bấm đăng ký kênh nhé!"
+            else:
+                new_text = f"Đáng chú ý là những chi tiết bất ngờ vừa được hé lộ xung quanh sự việc {title}."
+
+        updated_scenes = list(existing_scenes)
+        w_cnt = len(new_text.split())
+        updated_scenes[idx] = {
+            **target_scene,
+            "text": new_text,
+            "estimated_duration_seconds": round(max(3.8, (w_cnt / 2.8) + 0.3), 1)
+        }
+
+        return ApiResponse(
+            success=True,
+            data={
+                "scenes": updated_scenes,
+                "rewritten_index": idx,
+                "message": f"Đã tối ưu lại phân cảnh 0{idx + 1} theo phong cách {style}!"
+            }
+        )
+
+    # CASE B: Rewrite entire storyboard
+    num_scenes = len(existing_scenes) if existing_scenes else (5 if target_duration <= 35 else (14 if target_duration > 70 else 10))
+    context_points = [s.get("text", "") for s in existing_scenes if s.get("text")]
+    context_str = "\n".join(f"- {pt}" for pt in context_points)
+
+    full_prompt = (
+        f"Hãy viết lại toàn bộ kịch bản video ngắn 9:16 (TikTok, Shorts) bằng tiếng Việt cho chủ đề sau:\n"
+        f"Tiêu đề: {title}\n"
+        f"Phong cách kịch bản: {style_desc}\n"
+        f"Các ý chính hiện có:\n{context_str}\n"
+        f"Thời lượng: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh 14-18 từ tiếng Việt cuốn hút).\n"
+        f"Bắt buộc trả về duy nhất một JSON object có cấu trúc:\n"
+        f"{{\n"
+        f"  \"title\": \"{title}\",\n"
+        f"  \"aspect_ratio\": \"9:16\",\n"
+        f"  \"scenes\": [\n"
+        f"    {{\"scene_id\": 1, \"type\": \"hook\", \"text\": \"...\", \"visual_prompt\": \"...\"}}\n"
+        f"  ]\n"
+        f"}}"
+    )
+
+    rewritten_scenes = []
+    try:
+        content, _ = await asyncio.wait_for(
+            ai_router.route_and_generate(
+                capability=AiCapability.STRUCTURED_OUTPUT,
+                prompt=full_prompt,
+                system_prompt=system_prompt,
+                json_schema={"type": "object"},
+                fallback_mock=True
+            ),
+            timeout=25.0
+        )
+        cleaned = _clean_json_text(content)
+        parsed = json.loads(cleaned)
+        if parsed.get("scenes") and len(parsed["scenes"]) >= max(3, int(num_scenes * 0.7)):
+            for idx, sc in enumerate(parsed["scenes"]):
+                raw_txt = sc.get("text", "")
+                clean_txt = clean_script_text(raw_txt)
+                if idx == 0 and len(clean_txt.split()) > 20:
+                    clean_txt = make_viral_hook(title, niche=style)
+                w_cnt = len(clean_txt.split())
+                dur = round(max(3.8, (w_cnt / 2.8) + 0.3), 1)
+
+                orig_media = existing_scenes[idx].get("media_candidate") if idx < len(existing_scenes) else None
+                orig_visual = existing_scenes[idx].get("visual_intent") if idx < len(existing_scenes) else None
+
+                rewritten_scenes.append({
+                    "id": f"sc-{req.project_id}-{idx + 1}",
+                    "order": idx + 1,
+                    "scene_id": idx + 1,
+                    "type": sc.get("type", f"body_{idx}"),
+                    "text": clean_txt,
+                    "estimated_duration_seconds": dur,
+                    "visual_intent": sc.get("visual_prompt") or orig_visual or f"Hình ảnh phân cảnh {idx + 1}: {title}",
+                    "layout_type": "fullscreen",
+                    "media_candidate": orig_media
+                })
+    except Exception:
+        pass
+
+    if not rewritten_scenes:
+        viral_scenes = build_viral_storyboard(
+            title=title,
+            clean_text=" ".join(context_points),
+            claims=context_points,
+            num_scenes=num_scenes,
+            niche=style
+        )
+        for idx, sc in enumerate(viral_scenes):
+            orig_media = existing_scenes[idx].get("media_candidate") if idx < len(existing_scenes) else None
+            orig_visual = existing_scenes[idx].get("visual_intent") if idx < len(existing_scenes) else None
+            rewritten_scenes.append({
+                "id": f"sc-{req.project_id}-{idx + 1}",
+                "order": idx + 1,
+                "scene_id": idx + 1,
+                "type": sc.get("type", f"body_{idx}"),
+                "text": sc["text"],
+                "estimated_duration_seconds": sc["estimated_duration_seconds"],
+                "visual_intent": sc.get("visual_prompt") or orig_visual or f"Hình ảnh phân cảnh {idx + 1}: {title}",
+                "layout_type": "fullscreen",
+                "media_candidate": orig_media
+            })
+
+    return ApiResponse(
+        success=True,
+        data={
+            "scenes": rewritten_scenes,
+            "message": f"Đã viết lại toàn bộ kịch bản ({len(rewritten_scenes)} phân cảnh) theo phong cách {style}!"
+        }
+    )
+
+
 def _get_system_font(size: int = 36) -> ImageFont.FreeTypeFont:
     """Loads Arial/Calibri for 100% full Vietnamese unicode support."""
     for font_path in [
