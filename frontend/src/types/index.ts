@@ -174,6 +174,7 @@ export interface TrendTopic {
   verification_status: ClaimVerificationStatus;
   primary_publisher: string;
   published_at: string;
+  url?: string;
 }
 
 export interface SocialAccount {

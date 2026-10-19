@@ -4,7 +4,7 @@ import { Header } from './components/layout/Header';
 import { DashboardView } from './views/DashboardView';
 import { UrlToVideoView } from './views/UrlToVideoView';
 import { AiProviderManagerView } from './views/AiProviderManagerView';
-import { TrendsView } from './views/TrendsView';
+import { TrendsView, type TrendCreateOptions } from './views/TrendsView';
 import { PublishingView } from './views/PublishingView';
 import { ExportedVideosView } from './views/ExportedVideosView';
 import { INITIAL_PROJECT, MOCK_PROVIDERS } from './data/mockData';
@@ -30,7 +30,7 @@ export function App() {
     setCurrentTab('exported-videos');
   };
 
-  const handleSelectTopicToCreate = async (topic: TrendTopic, planId?: string) => {
+  const handleSelectTopicToCreate = async (topic: TrendTopic, planId?: string, options?: TrendCreateOptions) => {
     if (planId) {
       setActivePlanId(planId);
     }
@@ -215,11 +215,17 @@ export function App() {
       created_at: 'Vừa tạo từ Xu hướng',
       scenes_count: topicScenes.length,
       scenes: topicScenes,
-      voice_id: 'vi-VN-NamMinhNeural',
-      voice_preset_id: 'vi-VN-NamMinhNeural-news',
+      voice_id: options?.voicePreset?.includes('HoaiMy') ? 'vi-VN-HoaiMyNeural' : 'vi-VN-NamMinhNeural',
+      voice_preset_id: options?.voicePreset || 'vi-VN-NamMinhNeural-news',
       audio_url: `/storage/artifacts/voiceover_${projId}.mp3`,
       video_url: undefined // Clear old video to show fresh project
     };
+
+    const voicePreset = options?.voicePreset || 'vi-VN-NamMinhNeural-news';
+    const voiceId = voicePreset.includes('HoaiMy') ? 'vi-VN-HoaiMyNeural' : 'vi-VN-NamMinhNeural';
+    const targetSchedTime = options?.scheduleOption === 'custom' && options?.customDateTime
+      ? new Date(options.customDateTime).toISOString()
+      : undefined;
 
     setProject(newProj);
     // Start render in background and jump immediately to exported-videos
@@ -227,9 +233,11 @@ export function App() {
       project_id: projId,
       title: topic.title,
       scenes: topicScenes,
-      voice_id: 'vi-VN-NamMinhNeural',
-      voice_preset_id: 'vi-VN-NamMinhNeural-news',
-      subtitle_mode: 'word_group'
+      voice_id: voiceId,
+      voice_preset_id: voicePreset,
+      subtitle_mode: 'word_group',
+      account_id: options?.accountId || undefined,
+      scheduled_time: targetSchedTime
     }).catch(console.error);
 
     setCurrentTab('exported-videos');

@@ -12,9 +12,18 @@ import {
 import type { TrendTopic } from '../types';
 import { MOCK_TRENDS } from '../data/mockData';
 import { TrendsApi, type ApiTrendItem } from '../services/api';
+import { CreateVideoModal, type CreateVideoModalSubmitParams } from '../components/CreateVideoModal';
+
+export interface TrendCreateOptions {
+  accountId?: string;
+  voicePreset?: string;
+  scheduleOption?: 'immediate' | 'custom';
+  customDateTime?: string;
+  customUrl?: string;
+}
 
 interface TrendsViewProps {
-  onSelectTopicToCreate: (topic: TrendTopic, planId?: string) => void;
+  onSelectTopicToCreate: (topic: TrendTopic, planId?: string, options?: TrendCreateOptions) => void;
 }
 
 export const TrendsView: React.FC<TrendsViewProps> = ({
@@ -25,7 +34,9 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
   const [trends, setTrends] = useState<TrendTopic[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanToast, setScanToast] = useState<string | null>(null);
-  const [creatingTopicId, setCreatingTopicId] = useState<string | null>(null);
+  const [selectedTopicForModal, setSelectedTopicForModal] = useState<TrendTopic | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmittingModal, setIsSubmittingModal] = useState(false);
 
   // Auto-refresh & Radar metadata state
   const [nextRefreshSeconds, setNextRefreshSeconds] = useState<number>(3600);
@@ -78,6 +89,7 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
           verification_status: item.verification_status as any,
           primary_publisher: item.primary_publisher,
           published_at: item.published_at,
+          url: item.url,
         }));
         setTrends(mapped);
       } else if (trends.length === 0) {
@@ -133,12 +145,20 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
     }
   };
 
-  const handleCreateVideoFromTopic = async (topic: TrendTopic) => {
-    setCreatingTopicId(topic.id);
+  const handleOpenCreateModal = (topic: TrendTopic) => {
+    setSelectedTopicForModal(topic);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleModalSubmit = async (params: CreateVideoModalSubmitParams) => {
+    const targetTopic = params.topic || selectedTopicForModal;
+    if (!targetTopic) return;
+
+    setIsSubmittingModal(true);
     let createdPlanId: string | undefined = undefined;
 
     try {
-      const planRes = await TrendsApi.convertTrendToPlan(topic.id, {
+      const planRes = await TrendsApi.convertTrendToPlan(targetTopic.id, {
         target_duration_seconds: 60,
         aspect_ratio: '9:16',
         auto_start: true
@@ -149,8 +169,16 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
     } catch (e) {
       console.warn("Could not create backend plan for trend:", e);
     } finally {
-      setCreatingTopicId(null);
-      onSelectTopicToCreate(topic, createdPlanId);
+      setIsSubmittingModal(false);
+      setIsCreateModalOpen(false);
+      setSelectedTopicForModal(null);
+      onSelectTopicToCreate(targetTopic, createdPlanId, {
+        accountId: params.accountId,
+        voicePreset: params.voicePreset,
+        scheduleOption: params.scheduleOption,
+        customDateTime: params.customDateTime,
+        customUrl: params.url
+      });
     }
   };
 
@@ -271,7 +299,6 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
       {/* Trends Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredTrends.map((topic) => {
-          const isCreating = creatingTopicId === topic.id;
           return (
             <div
               key={topic.id}
@@ -318,18 +345,30 @@ export const TrendsView: React.FC<TrendsViewProps> = ({
                 </div>
 
                 <button
-                  onClick={() => handleCreateVideoFromTopic(topic)}
-                  disabled={isCreating}
-                  className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 transition disabled:opacity-50"
+                  type="button"
+                  onClick={() => handleOpenCreateModal(topic)}
+                  className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 transition active:scale-[0.98]"
                 >
-                  <Sparkles className={`w-3.5 h-3.5 ${isCreating ? 'animate-spin' : ''}`} />
-                  <span>{isCreating ? 'Đang Tạo Kịch Bản DAG...' : 'Tạo Kịch Bản Video Ngay'}</span>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Tạo Kịch Bản Video Ngay</span>
                 </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Modal Configure & Auto Render Pipeline (Ảnh 2) */}
+      <CreateVideoModal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setSelectedTopicForModal(null);
+        }}
+        topic={selectedTopicForModal}
+        onSubmit={handleModalSubmit}
+        isSubmitting={isSubmittingModal}
+      />
     </div>
   );
 };
