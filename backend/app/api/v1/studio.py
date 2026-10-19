@@ -352,10 +352,12 @@ async def rewrite_script(req: RewriteScriptRequest):
         f"Phong cách kịch bản: {style_desc}\n"
         "NGUYÊN TẮC BẮT BUỘC:\n"
         "1. 100% văn phong NÓI (conversational Vietnamese), tự nhiên, nhịp điệu dồn dập, giàu cảm xúc, như người thật đang kể chuyện trực tiếp cho khán giả.\n"
-        "2. TUYỆT ĐỐI CẤM văn phong báo chí hành chính, công văn, báo cáo ủy ban, hay 'văn mẫu' sáo rỗng (như 'toàn bộ diễn biến đã được rà soát', 'kết quả thể hiện nỗ lực rất lớn', 'theo ghi nhận thực tế', 'sự việc đang tiếp tục tạo hiệu ứng').\n"
-        "3. Mỗi phân cảnh chỉ chứa 1 câu ngắn gọn, đắt giá (14-18 từ), kết nối mạch lạc bằng từ nối cảm xúc ('Thế nhưng...', 'Điều bất ngờ là...', 'Chưa dừng lại ở đó...', 'Đặc biệt...', 'Ngay lập tức...').\n"
-        "4. Phân cảnh 1 (hook): Cực sốc, đánh thẳng vào tâm lý tò mò hoặc mâu thuẫn lớn, dưới 18 từ, tuyệt đối không đọc lại nguyên văn tiêu đề.\n"
-        "5. Phân cảnh cuối (cta): Đặt một câu hỏi kích thích tranh luận mạnh mẽ để người xem bình luận sôi nổi."
+        "2. TUYỆT ĐỐI CẤM văn phong báo chí hành chính, công văn, báo cáo ủy ban, hay 'văn mẫu' sáo rỗng (như 'toàn bộ diễn biến đã được rà soát', 'kết quả thể hiện nỗ lực rất lớn', 'theo ghi nhận thực tế', 'sự việc đang tiếp tục tạo hiệu ứng', 'tính pháp lý nghiêm ngặt').\n"
+        "3. Nếu là chủ đề âm nhạc, concert, nghệ sĩ: Giọng điệu hào hứng, cuồng nhiệt, tôn vinh nghệ sĩ và sự cuồng nhiệt của khán giả, tuyệt đối không dùng từ tiêu cực ('cú sốc', 'pháp luật').\n"
+        "4. Mỗi phân cảnh chứa 16-22 từ ngắn gọn, đắt giá, kết nối mạch lạc bằng từ nối cảm xúc ('Thế nhưng...', 'Điều bất ngờ là...', 'Chưa dừng lại ở đó...', 'Đặc biệt...', 'Hơn thế nữa...').\n"
+        "5. Phân cảnh 1 (hook): Cực sốc hoặc hào hứng, dưới 18 từ, đánh thẳng vào tâm lý tò mò, tuyệt đối không đọc lại nguyên văn tiêu đề.\n"
+        "6. Phân cảnh cuối (cta): Đặt một câu hỏi kích thích tranh luận mạnh mẽ để người xem bình luận sôi nổi.\n"
+        "7. Yêu cầu định dạng: Bắt buộc trả về đúng định dạng JSON object hợp lệ (JSON format)."
     )
 
     # CASE A: Rewrite only 1 single scene
@@ -418,7 +420,7 @@ async def rewrite_script(req: RewriteScriptRequest):
         )
 
     # CASE B: Rewrite entire storyboard
-    num_scenes = len(existing_scenes) if existing_scenes else (5 if target_duration <= 35 else (14 if target_duration > 70 else 10))
+    num_scenes = len(existing_scenes) if existing_scenes else (6 if target_duration <= 35 else (12 if target_duration > 65 else 10))
     context_points = [s.get("text", "") for s in existing_scenes if s.get("text")]
     context_str = "\n".join(f"- {pt}" for pt in context_points)
 
@@ -427,7 +429,7 @@ async def rewrite_script(req: RewriteScriptRequest):
         f"Tiêu đề: {title}\n"
         f"Phong cách kịch bản: {style_desc}\n"
         f"Các ý chính hiện có:\n{context_str}\n"
-        f"Thời lượng: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh 14-18 từ tiếng Việt cuốn hút).\n"
+        f"Thời lượng: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh 16-22 từ tiếng Việt cuốn hút, đảm bảo tổng thời lượng đọc đạt chuẩn 48 đến 56 giây).\n"
         f"Bắt buộc trả về duy nhất một JSON object có cấu trúc:\n"
         f"{{\n"
         f"  \"title\": \"{title}\",\n"
@@ -459,7 +461,7 @@ async def rewrite_script(req: RewriteScriptRequest):
                 if idx == 0 and len(clean_txt.split()) > 20:
                     clean_txt = make_viral_hook(title, niche=style)
                 w_cnt = len(clean_txt.split())
-                dur = round(max(3.8, (w_cnt / 2.8) + 0.3), 1)
+                dur = round(max(4.8, min(6.0, (w_cnt / 3.0) + 0.4)), 1)
 
                 orig_media = existing_scenes[idx].get("media_candidate") if idx < len(existing_scenes) else None
                 orig_visual = existing_scenes[idx].get("visual_intent") if idx < len(existing_scenes) else None

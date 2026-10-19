@@ -247,7 +247,7 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
       let chosenNiche = 'Thời Sự & Đất Nước';
       let contextualScenes: any[] = [];
 
-      if (urlInput.includes('cao-toc') || urlInput.includes('duong-sat') || urlInput.includes('chinhphu')) {
+      if (urlInput.includes('102261015') || urlInput.includes('thong-xe-toan-tuyen-cao-toc')) {
         chosenArticle = sampleArticles[0];
         chosenNiche = 'Thời Sự & Đất Nước';
         contextualScenes = [
@@ -352,7 +352,7 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
             }
           }
         ];
-      } else if (urlInput.includes('pin-the-ran') || urlInput.includes('1000km') || urlInput.includes('oto-dien')) {
+      } else if (urlInput.includes('4792101') || urlInput.includes('oto-dien-pin-the-ran-chay-1000km')) {
         chosenArticle = sampleArticles[1];
         chosenNiche = 'Khoa Học & Xe Điện';
         contextualScenes = [
@@ -457,7 +457,7 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
             }
           }
         ];
-      } else if (urlInput.includes('tuoitre') || urlInput.includes('ung-thu') || urlInput.includes('y-te')) {
+      } else if (urlInput.includes('20261014') || urlInput.includes('ai-phat-hien-som-ung-thu')) {
         chosenArticle = sampleArticles[2];
         chosenNiche = 'Y Tế & Công Nghệ AI';
         contextualScenes = [
@@ -565,9 +565,120 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
       } else {
         // Custom URL input
         const titleLower = ((realTitle || '') + ' ' + urlInput).toLowerCase();
-        const isTrafficOrCrime = titleLower.includes('xu-phat') || titleLower.includes('danh-vong') || titleLower.includes('bien-so') || titleLower.includes('cong-an') || titleLower.includes('xử phạt') || titleLower.includes('công an') || titleLower.includes('vi phạm');
+        const isMusicOrConcert = titleLower.includes('concert') || titleLower.includes('anh trai') || titleLower.includes('chông gai') || titleLower.includes('say hi') || titleLower.includes('ca sĩ') || titleLower.includes('âm nhạc') || titleLower.includes('liveshow') || titleLower.includes('sân khấu') || titleLower.includes('nghệ sĩ') || titleLower.includes('fandom') || titleLower.includes('nhạc hội') || titleLower.includes('bài hát') || titleLower.includes('showbiz');
+        const isTrafficOrCrime = !isMusicOrConcert && (titleLower.includes('xu-phat') || titleLower.includes('danh-vong') || titleLower.includes('bien-so') || titleLower.includes('cong-an') || titleLower.includes('xử phạt') || titleLower.includes('công an') || titleLower.includes('vi phạm') || titleLower.includes('bắt giữ') || titleLower.includes('khởi tố'));
 
-        if (isTrafficOrCrime) {
+        const is60s = targetDuration === '60s' || targetDuration === '90s';
+        const numSec = is60s ? 10 : 6;
+        const dynamicScenes: any[] = [];
+
+        if (isMusicOrConcert) {
+          chosenArticle = {
+            label: 'Giải Trí & Âm Nhạc',
+            url: urlInput,
+            title: realTitle || 'Đêm nhạc bùng nổ cảm xúc và gắn kết cội nguồn',
+            publisher: realPublisher || 'Giải Trí 24h',
+            summary: realSummary || 'Không khí cuồng nhiệt và những tiết mục thăng hoa chạm tới trái tim hàng vạn khán giả.',
+            claims: realClaims && realClaims.length > 0 ? realClaims : [
+              'Hàng vạn khán giả cùng hòa giọng tạo nên bầu không khí bùng nổ chưa từng có.',
+              'Các nghệ sĩ cống hiến những tiết mục thăng hoa kết hợp âm nhạc hiện đại và tinh thần dân tộc.',
+              'Sân khấu quy mô hoành tráng với âm thanh ánh sáng đỉnh cao truyền cảm hứng mạnh mẽ.'
+            ]
+          };
+          chosenNiche = 'Giải Trí & Âm Nhạc';
+
+          // Scene 1: Hook
+          dynamicScenes.push({
+            id: 'sc-url-01',
+            order: 1,
+            text: `Sức nóng bùng nổ: ${chosenArticle.title}! Đêm nhạc thăng hoa khiến hàng vạn khán giả vỡ òa cảm xúc.`,
+            estimated_duration_seconds: 5.4,
+            search_keywords: ['music concert stage lights crowd cheering'],
+            visual_intent: 'Sân khấu đại nhạc hội rực sáng với hàng vạn cánh tay hòa chung nhịp đập.',
+            layout_type: 'fullscreen',
+            caption_emphasis: ['Sức nóng bùng nổ', 'hàng vạn khán giả'],
+            source_claim_ids: ['claim-url-01'],
+            media_candidate: {
+              id: 'med-url-01',
+              title: chosenArticle.title,
+              source: chosenArticle.publisher,
+              thumbnail_url: (articleImages && articleImages.length > 0) ? articleImages[0] : '/storage/media/raw_download_1.jpg',
+              rights_status: 'LICENSED',
+              relevance_score: 98,
+              license_name: 'Verified Editorial'
+            }
+          });
+
+          const musicConnectors = [
+            'Không khí cuồng nhiệt và nguồn năng lượng tích cực lan tỏa khắp khán đài ngay từ những giây phút mở màn.',
+            'Các nghệ sĩ đã cống hiến những màn trình diễn thăng hoa, kết hợp đỉnh cao giữa âm nhạc hiện đại và bản sắc cội nguồn.',
+            'Hàng vạn khán giả cùng hòa chung lời ca, tạo nên những khoảnh khắc bùng nổ đầy xúc động và tự hào.',
+            'Sân khấu hoành tráng cùng hiệu ứng âm thanh ánh sáng đỉnh cao đã chạm đến từng cung bậc cảm xúc của người xem.',
+            'Một đêm nhạc không chỉ để thưởng thức nghệ thuật, mà còn là sự gắn kết tuyệt vời giữa các thế hệ yêu âm nhạc.',
+            'Những giai điệu quen thuộc được phối khí mới mẻ mang lại trải nghiệm thưởng thức âm nhạc vô cùng mãn nhãn.',
+            'Tình cảm nồng nhiệt của khán giả là minh chứng rõ nét cho sức sống mãnh liệt của âm nhạc Việt đương đại.',
+            'Sự kiện khép lại với những dư âm đẹp đẽ và sự trông đợi lớn vào những đêm diễn tiếp theo.'
+          ];
+
+          const claimsList = chosenArticle.claims || [];
+          for (let i = 1; i < numSec - 1; i++) {
+            let claimText = '';
+            if (i - 1 < claimsList.length && claimsList[i - 1].length > 15) {
+              claimText = claimsList[i - 1];
+            } else {
+              claimText = musicConnectors[(i - 1) % musicConnectors.length];
+            }
+            const artImg = (articleImages && articleImages.length > 1 && articleImages[i])
+              ? articleImages[i]
+              : `/storage/media/raw_download_${i + 1}.jpg`;
+            dynamicScenes.push({
+              id: `sc-url-0${i + 1}`,
+              order: i + 1,
+              text: claimText,
+              estimated_duration_seconds: 5.2,
+              search_keywords: ['concert performance artist passionate stage'],
+              visual_intent: `Hình ảnh nghệ sĩ biểu diễn đầy cảm xúc trên sân khấu: ${chosenArticle.title}`,
+              layout_type: i % 2 === 0 ? 'split_screen' : 'fullscreen',
+              caption_emphasis: ['thăng hoa', 'cảm xúc'],
+              source_claim_ids: [`claim-url-0${i + 1}`],
+              media_candidate: {
+                id: `med-url-0${i + 1}`,
+                title: `Phân cảnh biểu diễn ${i + 1}`,
+                source: chosenArticle.publisher,
+                thumbnail_url: artImg,
+                rights_status: 'LICENSED',
+                relevance_score: 95,
+                license_name: 'Verified Editorial'
+              }
+            });
+          }
+
+          // Final Scene: CTA
+          dynamicScenes.push({
+            id: `sc-url-${numSec}`,
+            order: numSec,
+            text: 'Bạn ấn tượng nhất với tiết mục hay nghệ sĩ nào trong đêm diễn này? Hãy chia sẻ cảm xúc bên dưới và bấm follow kênh nhé!',
+            estimated_duration_seconds: 5.4,
+            search_keywords: ['music fan engagement subscribe interaction'],
+            visual_intent: 'Khán giả reo hò cuồng nhiệt cùng lời kêu gọi theo dõi kênh âm nhạc.',
+            layout_type: 'fullscreen',
+            caption_emphasis: ['chia sẻ cảm xúc', 'bấm follow kênh'],
+            source_claim_ids: [`claim-url-${numSec}`],
+            media_candidate: {
+              id: `med-url-${numSec}`,
+              title: 'Cảm xúc khán giả',
+              source: 'Public Domain Free',
+              thumbnail_url: (articleImages && articleImages.length > 1 && articleImages[numSec - 1])
+                ? articleImages[numSec - 1]
+                : `/storage/media/raw_download_${numSec}.jpg`,
+              rights_status: 'LICENSED',
+              relevance_score: 96,
+              license_name: 'Commercial Allowed'
+            }
+          });
+
+          contextualScenes = dynamicScenes;
+        } else if (isTrafficOrCrime) {
           chosenArticle = {
             label: 'Thời Sự & Pháp Luật',
             url: urlInput,
@@ -581,19 +692,16 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
             ]
           };
           chosenNiche = 'Thời Sự & Pháp Luật';
-          const is60s = targetDuration === '60s' || targetDuration === '90s';
-          const numSec = is60s ? 10 : 5;
-          const dynamicScenes = [];
 
           dynamicScenes.push({
             id: 'sc-url-01',
             order: 1,
-            text: `Nóng: ${chosenArticle.title}! Thông tin chính thức vừa được công bố thu hút sự chú ý đặc biệt.`,
-            estimated_duration_seconds: 5.8,
+            text: `Nóng: ${chosenArticle.title}! Cơ quan chức năng đã chính thức vào cuộc xác minh và xử lý nghiêm minh.`,
+            estimated_duration_seconds: 5.4,
             search_keywords: ['breaking news official report headline'],
             visual_intent: 'Tiêu điểm thông tin chính thức và báo chí đưa tin.',
             layout_type: 'fullscreen',
-            caption_emphasis: ['Nóng', 'thông tin chính thức'],
+            caption_emphasis: ['Nóng', 'xử lý nghiêm minh'],
             source_claim_ids: ['claim-url-01'],
             media_candidate: {
               id: 'med-url-01',
@@ -606,9 +714,25 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
             }
           });
 
+          const crimeConnectors = [
+            'Mọi chuyện bắt đầu từ một mâu thuẫn bất ngờ nhưng các bên lại chọn cách bạo lực để giải quyết.',
+            'Tình huống căng thẳng nhanh chóng leo thang khiến những người chứng kiến xung quanh vô cùng bức xúc.',
+            'Lực lượng chức năng đã lập tức vào cuộc, trích xuất hình ảnh hiện trường và triệu tập các cá nhân liên quan.',
+            'Pháp luật luôn có sự nghiêm minh và tuyệt đối không có bất kỳ ngoại lệ nào cho hành vi coi thường trật tự.',
+            'Một bài học đắt giá cho sự bốc đồng: Chỉ một phút mất bình tĩnh có thể phải trả giá bằng cả tương lai.',
+            'Các nhân chứng tại hiện trường đã cung cấp nhiều tư liệu quan trọng giúp làm sáng tỏ diễn biến vụ việc.',
+            'Cơ quan công an khuyến cáo người dân cần giữ bình tĩnh và tôn trọng luật pháp trong mọi tình huống giao tiếp.',
+            'Vụ việc tiếp tục được điều tra làm rõ để xử lý đúng người, đúng tội theo quy định.'
+          ];
+
           const claimsList = chosenArticle.claims || [];
           for (let i = 1; i < numSec - 1; i++) {
-            const claimText = claimsList[(i - 1) % claimsList.length] || chosenArticle.summary || 'Vụ việc đang được cơ quan chuyên môn khẩn trương làm rõ và xử lý nghiêm minh theo quy định pháp luật.';
+            let claimText = '';
+            if (i - 1 < claimsList.length && claimsList[i - 1].length > 15) {
+              claimText = claimsList[i - 1];
+            } else {
+              claimText = crimeConnectors[(i - 1) % crimeConnectors.length];
+            }
             const artImg = (articleImages && articleImages.length > 1 && articleImages[i])
               ? articleImages[i]
               : `/storage/media/raw_download_${i + 1}.jpg`;
@@ -616,10 +740,10 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
               id: `sc-url-0${i + 1}`,
               order: i + 1,
               text: claimText,
-              estimated_duration_seconds: 6.0,
+              estimated_duration_seconds: 5.2,
               search_keywords: ['case investigation legal documentation evidence'],
               visual_intent: `Hình ảnh tư liệu thực tế chi tiết: ${chosenArticle.title}`,
-              layout_type: 'fullscreen',
+              layout_type: i % 2 === 0 ? 'split_screen' : 'fullscreen',
               caption_emphasis: ['xác minh', 'chi tiết'],
               source_claim_ids: [`claim-url-0${i + 1}`],
               media_candidate: {
@@ -637,12 +761,12 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
           dynamicScenes.push({
             id: `sc-url-${numSec}`,
             order: numSec,
-            text: 'Bạn có suy nghĩ gì về vụ việc này? Hãy để lại ý kiến bình luận bên dưới và bấm theo dõi kênh để cập nhật diễn biến mới nhất 24/7!',
-            estimated_duration_seconds: 6.0,
+            text: 'Bạn nghĩ hành vi này nên bị xử phạt thế nào cho thích đáng? Hãy bình luận bên dưới và bấm theo dõi kênh nhé!',
+            estimated_duration_seconds: 5.4,
             search_keywords: ['discussion subscribe comment social icon'],
             visual_intent: 'Hộp thoại tương tác và nút đăng ký kênh theo dõi tin tức đời sống.',
             layout_type: 'fullscreen',
-            caption_emphasis: ['bình luận', 'đăng ký theo dõi'],
+            caption_emphasis: ['bình luận', 'theo dõi kênh'],
             source_claim_ids: [`claim-url-${numSec}`],
             media_candidate: {
               id: `med-url-${numSec}`,
@@ -660,7 +784,7 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
           contextualScenes = dynamicScenes;
         } else {
           chosenArticle = {
-            label: 'Tin Tức Nguồn Web',
+            label: 'Tin Tức & Đời Sống',
             url: urlInput,
             title: realTitle || `Khám Phá Toàn Diện: Tin Nóng Từ ${urlInput.replace(/^https?:\/\//, '').split('/')[0]}`,
             publisher: realPublisher || urlInput.replace(/^https?:\/\//, '').split('/')[0],
@@ -671,109 +795,97 @@ export const UrlToVideoView: React.FC<UrlToVideoViewProps> = ({
               'Kỳ vọng tạo nên nhiều thay đổi tích cực trong giai đoạn tiếp theo.'
             ]
           };
-          chosenNiche = 'Tin Tức & Thời Sự';
-          contextualScenes = [
-            {
-              id: 'sc-url-01',
-              order: 1,
-              text: `Tiêu điểm tin tức hôm nay: ${chosenArticle.title}!`,
-              estimated_duration_seconds: 5.5,
-              search_keywords: ['breaking news broadcast headline'],
-              visual_intent: 'Đồ họa chớp sáng tiêu điểm tin nóng ấn tượng trong 3 giây đầu.',
-              layout_type: 'fullscreen',
-              caption_emphasis: ['Tiêu điểm tin tức', 'tin nóng'],
-              source_claim_ids: ['claim-url-01'],
+          chosenNiche = 'Tin Tức & Đời Sống';
+
+          dynamicScenes.push({
+            id: 'sc-url-01',
+            order: 1,
+            text: `Tiêu điểm tin tức hôm nay: ${chosenArticle.title}! Thông tin đang thu hút sự chú ý đặc biệt của cộng đồng.`,
+            estimated_duration_seconds: 5.4,
+            search_keywords: ['breaking news broadcast headline'],
+            visual_intent: 'Đồ họa chớp sáng tiêu điểm tin nóng ấn tượng trong 3 giây đầu.',
+            layout_type: 'fullscreen',
+            caption_emphasis: ['Tiêu điểm tin tức', 'chú ý đặc biệt'],
+            source_claim_ids: ['claim-url-01'],
+            media_candidate: {
+              id: 'med-url-01',
+              title: chosenArticle.title,
+              source: chosenArticle.publisher,
+              thumbnail_url: articleImages[0] || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=720&auto=format&fit=crop&q=80',
+              rights_status: 'LICENSED',
+              relevance_score: 95,
+              license_name: 'Verified Editorial'
+            }
+          });
+
+          const generalConnectors = [
+            'Câu chuyện này đang nhanh chóng trở thành tâm điểm chú ý trên khắp các diễn đàn mạng xã hội.',
+            'Điều khiến cộng đồng ấn tượng nhất chính là những chi tiết đặc biệt vừa được hé lộ xung quanh sự việc.',
+            'Rất nhiều luồng ý kiến và phản hồi tích cực đã nổ ra, tạo nên những cuộc thảo luận vô cùng sôi nổi.',
+            'Dù nhìn nhận ở góc độ nào, sự việc này cũng mang đến những giá trị và góc nhìn thực tế rất đáng suy ngẫm.',
+            'Những chuyển biến tích cực bước đầu đã đem lại niềm tin và sự ủng hộ mạnh mẽ từ dư luận.',
+            'Các giải pháp đồng bộ đang được triển khai nhằm mang lại hiệu quả thiết thực và bền vững.',
+            'Cộng đồng kỳ vọng những bước tiến mới sẽ tạo nên sức bật mạnh mẽ cho đời sống xã hội.',
+            'Những thông tin tiếp theo sẽ tiếp tục được cập nhật để gửi tới quý khán giả sớm nhất.'
+          ];
+
+          const claimsList = chosenArticle.claims || [];
+          for (let i = 1; i < numSec - 1; i++) {
+            let claimText = '';
+            if (i - 1 < claimsList.length && claimsList[i - 1].length > 15) {
+              claimText = claimsList[i - 1];
+            } else {
+              claimText = generalConnectors[(i - 1) % generalConnectors.length];
+            }
+            const artImg = (articleImages && articleImages.length > 1 && articleImages[i])
+              ? articleImages[i]
+              : `/storage/media/raw_download_${i + 1}.jpg`;
+            dynamicScenes.push({
+              id: `sc-url-0${i + 1}`,
+              order: i + 1,
+              text: claimText,
+              estimated_duration_seconds: 5.2,
+              search_keywords: ['detailed document report analytics'],
+              visual_intent: `Tư liệu phân cảnh chi tiết: ${chosenArticle.title}`,
+              layout_type: i % 2 === 0 ? 'split_screen' : 'fullscreen',
+              caption_emphasis: ['chi tiết', 'thời sự'],
+              source_claim_ids: [`claim-url-0${i + 1}`],
               media_candidate: {
-                id: 'med-url-01',
-                title: chosenArticle.title,
+                id: `med-url-0${i + 1}`,
+                title: `Phân cảnh chi tiết ${i + 1}`,
                 source: chosenArticle.publisher,
-                thumbnail_url: articleImages[0] || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=720&auto=format&fit=crop&q=80',
+                thumbnail_url: artImg,
                 rights_status: 'LICENSED',
                 relevance_score: 95,
                 license_name: 'Verified Editorial'
               }
-            },
-            {
-              id: 'sc-url-02',
-              order: 2,
-              text: chosenArticle.summary,
-              estimated_duration_seconds: 6.5,
-              search_keywords: ['detailed document report analytics'],
-              visual_intent: 'Tư liệu chi tiết và diễn giải logic các khía cạnh cốt lõi của bài viết.',
-              layout_type: 'split_screen',
-              caption_emphasis: ['chi tiết', 'cốt lõi'],
-              source_claim_ids: ['claim-url-02'],
-              media_candidate: {
-                id: 'med-url-02',
-                title: 'Detailed Analytical Report',
-                source: chosenArticle.publisher,
-                thumbnail_url: articleImages[1] || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=720&auto=format&fit=crop&q=80',
-                rights_status: 'LICENSED',
-                relevance_score: 95,
-                license_name: 'CC-BY 4.0'
-              }
-            },
-            {
-              id: 'sc-url-03',
-              order: 3,
-              text: `Theo báo cáo từ ${chosenArticle.publisher}, toàn bộ dữ liệu đã được rà soát và xác thực tính pháp lý nghiêm ngặt.`,
-              estimated_duration_seconds: 5.8,
-              search_keywords: ['verified press news facts report'],
-              visual_intent: 'Phòng làm việc chuyên gia biên tập tin tức và kiểm chứng nguồn tin.',
-              layout_type: 'fullscreen',
-              caption_emphasis: [chosenArticle.publisher, 'xác thực nghiêm ngặt'],
-              source_claim_ids: ['claim-url-03'],
-              media_candidate: {
-                id: 'med-url-03',
-                title: 'Fact Checking Lab',
-                source: chosenArticle.publisher,
-                thumbnail_url: articleImages[2] || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=720&auto=format&fit=crop&q=80',
-                rights_status: 'LICENSED',
-                relevance_score: 94,
-                license_name: 'Commercial Allowed'
-              }
-            },
-            {
-              id: 'sc-url-04',
-              order: 4,
-              text: 'Diễn biến này đang tiếp tục thu hút sự quan tâm lớn của đông đảo bạn đọc trên khắp cả nước.',
-              estimated_duration_seconds: 5.5,
-              search_keywords: ['future modern city society growth'],
-              visual_intent: 'Nhịp sống đô thị năng động với dòng thông tin số vận hành không ngừng.',
-              layout_type: 'split_screen',
-              caption_emphasis: ['quan tâm lớn', 'khắp cả nước'],
-              source_claim_ids: ['claim-url-04'],
-              media_candidate: {
-                id: 'med-url-04',
-                title: 'Urban Digital Information',
-                source: 'Public Domain Free',
-                thumbnail_url: articleImages[3] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=720&auto=format&fit=crop&q=80',
-                rights_status: 'LICENSED',
-                relevance_score: 93,
-                license_name: 'Commercial Allowed'
-              }
-            },
-            {
-              id: 'sc-url-05',
-              order: 5,
-              text: 'Bạn có suy nghĩ gì về vấn đề này? Đừng quên để lại bình luận và đăng ký theo dõi kênh ngay nhé!',
-              estimated_duration_seconds: 5.5,
-              search_keywords: ['social media subscribe comments interaction'],
-              visual_intent: 'Hộp thoại tương tác sống động khuyến khích người xem để lại bình luận.',
-              layout_type: 'fullscreen',
-              caption_emphasis: ['bình luận', 'đăng ký theo dõi'],
-              source_claim_ids: ['claim-url-05'],
-              media_candidate: {
-                id: 'med-url-05',
-                title: 'Social Interaction CTA',
-                source: 'Verified Stock',
-                thumbnail_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=720&auto=format&fit=crop&q=80',
-                rights_status: 'LICENSED',
-                relevance_score: 95,
-                license_name: 'Commercial Allowed'
-              }
+            });
+          }
+
+          dynamicScenes.push({
+            id: `sc-url-${numSec}`,
+            order: numSec,
+            text: 'Quan điểm của bạn về vấn đề này thế nào? Hãy chia sẻ cảm nghĩ bên dưới và bấm đăng ký kênh để cập nhật tin mới!',
+            estimated_duration_seconds: 5.4,
+            search_keywords: ['social media subscribe comments interaction'],
+            visual_intent: 'Hộp thoại tương tác sống động khuyến khích người xem để lại bình luận.',
+            layout_type: 'fullscreen',
+            caption_emphasis: ['bình luận', 'đăng ký theo dõi'],
+            source_claim_ids: [`claim-url-${numSec}`],
+            media_candidate: {
+              id: `med-url-${numSec}`,
+              title: 'Social Interaction CTA',
+              source: 'Verified Stock',
+              thumbnail_url: (articleImages && articleImages.length > 1 && articleImages[numSec - 1])
+                ? articleImages[numSec - 1]
+                : `/storage/media/raw_download_${numSec}.jpg`,
+              rights_status: 'LICENSED',
+              relevance_score: 95,
+              license_name: 'Commercial Allowed'
             }
-          ];
+          });
+
+          contextualScenes = dynamicScenes;
         }
       }
 

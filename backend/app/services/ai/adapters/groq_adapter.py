@@ -87,6 +87,13 @@ class GroqAdapter(BaseAiAdapter):
 
         if json_schema:
             payload["response_format"] = {"type": "json_object"}
+            # Groq Cloud API requires the word 'JSON' explicitly in the system or user prompt when response_format is json_object
+            json_instruction = "You must output a valid JSON object matching the requested schema."
+            if messages and messages[0]["role"] == "system":
+                if "json" not in messages[0]["content"].lower():
+                    messages[0]["content"] += f"\n\n{json_instruction}"
+            else:
+                messages.insert(0, {"role": "system", "content": json_instruction})
 
         start_time = time.time()
         try:

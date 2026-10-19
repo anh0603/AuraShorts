@@ -207,12 +207,20 @@ def make_viral_hook(title: str, niche: str = "engaging") -> str:
     if _match_topic(t_lower, ["lịch sử", "trường sơn", "chiến thắng", "kháng chiến", "tự hào", "quân đội", "anh hùng"]):
         return "Mốc son chói lọi của dân tộc mà mỗi người Việt Nam đều không thể nào quên!"
 
-    # Pattern 6: General dynamic viral hook (< 16 words)
+    # Pattern 6: Entertainment / Music Concerts / Culture & Arts
+    music_keywords = ["concert", "anh trai", "chông gai", "say hi", "ca sĩ", "âm nhạc", "liveshow", "sân khấu", "khán giả", "bài hát", "trình diễn", "nghệ sĩ", "fandom", "nhạc hội", "thần tượng"]
+    if _match_topic(t_lower, music_keywords):
+        main_headline = clean_t.split(':')[0].split(' - ')[0].strip()
+        words = main_headline.split()
+        short_title = " ".join(words[:10]).rstrip(':,.- ') if len(words) > 10 else main_headline.rstrip('.!?')
+        return f"Sức nóng bùng nổ nghìn độ: {short_title} khiến hàng vạn khán giả vỡ òa!"
+
+    # Pattern 7: General dynamic viral hook (< 16 words)
     words = clean_t.split()
     if len(words) <= 12:
         return f"Bạn có tin nổi không? Sự việc {clean_t.rstrip('.!?')} đang gây sốt!"
     else:
-        clause = " ".join(words[:11]).rstrip('. ,;:')
+        clause = " ".join(words[:10]).rstrip('. ,;:')
         return f"Cú sốc vừa được hé lộ: {clause} khiến dư luận sững sờ!"
 
 
@@ -239,6 +247,7 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
     - Punchy Hook (< 18 words) that triggers curiosity
     - Clean narrative arc (Context -> Conflict / Revelation -> Details -> Impact -> Takeaway)
     - Zero repetitive bureaucratic filler phrases
+    - Pacing strictly within 48s to 56s total video duration
     - Engaging final CTA with curiosity-driven discussion prompt
     """
     scenes = []
@@ -250,7 +259,7 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
         "scene_id": 1,
         "type": "hook",
         "text": hook_str,
-        "estimated_duration_seconds": round(max(4.2, (hook_words / 2.8) + 0.3), 1),
+        "estimated_duration_seconds": round(max(4.8, min(5.6, (hook_words / 3.2) + 0.3)), 1),
         "visual_prompt": f"Tiêu điểm tin tức nóng 9:16: {title}"
     })
 
@@ -294,14 +303,30 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
     tech_keywords = ["pin thể rắn", "xe điện", "trí tuệ nhân tạo", "mô hình ai", "công nghệ ai", "bán dẫn", "vi mạch", "chế tạo robot", "bệnh ung thư", "kỳ tích y khoa"]
     green_keywords = ["năng lượng tái tạo", "điện gió", "môi trường", "sinh thái", "net zero", "năng lượng mặt trời", "biến đổi khí hậu"]
     admin_keywords = ["giải quyết", "hồ sơ", "tồn đọng", "phú quốc", "đặc khu", "cải cách"]
+    music_keywords = ["concert", "anh trai", "chông gai", "say hi", "ca sĩ", "âm nhạc", "liveshow", "sân khấu", "khán giả", "bài hát", "trình diễn", "nghệ sĩ", "fandom", "nhạc hội", "thần tượng"]
 
-    if _match_topic(title, crime_keywords):
+    if _match_topic(title, music_keywords):
+        connectors = [
+            "Không khí cuồng nhiệt và nguồn năng lượng tích cực lan tỏa khắp khán đài ngay từ những giây phút mở màn.",
+            "Các nghệ sĩ đã cống hiến những màn trình diễn thăng hoa, kết hợp đỉnh cao giữa âm nhạc hiện đại và bản sắc cội nguồn.",
+            "Hàng vạn khán giả cùng hòa chung lời ca, tạo nên những khoảnh khắc bùng nổ đầy xúc động và tự hào.",
+            "Sân khấu hoành tráng cùng hiệu ứng âm thanh ánh sáng đỉnh cao đã chạm đến từng cung bậc cảm xúc của người xem.",
+            "Một đêm nhạc không chỉ để thưởng thức nghệ thuật, mà còn là sự gắn kết tuyệt vời giữa các thế hệ yêu âm nhạc.",
+            "Những giai điệu quen thuộc được phối khí mới mẻ mang lại trải nghiệm thưởng thức âm nhạc vô cùng mãn nhãn.",
+            "Tình cảm nồng nhiệt của khán giả là minh chứng rõ nét cho sức sống mãnh liệt của âm nhạc đương đại.",
+            "Đêm diễn khép lại trọn vẹn với những dư âm đẹp đẽ và sự trông đợi lớn từ người hâm mộ."
+        ]
+        cta = "Bạn ấn tượng nhất với tiết mục hay nghệ sĩ nào trong đêm diễn này? Hãy chia sẻ cảm xúc bên dưới và bấm theo dõi kênh nhé!"
+    elif _match_topic(title, crime_keywords):
         connectors = [
             "Mọi chuyện bắt đầu từ một mâu thuẫn bất ngờ nhưng các bên lại chọn cách bạo lực để giải quyết.",
             "Tình huống căng thẳng nhanh chóng leo thang khiến những người chứng kiến xung quanh vô cùng bức xúc.",
             "Lực lượng chức năng đã lập tức vào cuộc, trích xuất hình ảnh hiện trường và triệu tập các cá nhân liên quan.",
             "Pháp luật luôn có sự nghiêm minh và tuyệt đối không có bất kỳ ngoại lệ nào cho hành vi coi thường trật tự.",
-            "Một bài học đắt giá cho sự bốc đồng: Chỉ một phút mất bình tĩnh có thể phải trả giá bằng cả tương lai."
+            "Một bài học đắt giá cho sự bốc đồng: Chỉ một phút mất bình tĩnh có thể phải trả giá bằng cả tương lai.",
+            "Các nhân chứng tại hiện trường đã cung cấp nhiều tư liệu quan trọng giúp làm sáng tỏ diễn biến vụ việc.",
+            "Cơ quan công an khuyến cáo người dân cần giữ bình tĩnh và tôn trọng luật pháp trong mọi tình huống giao tiếp.",
+            "Vụ việc tiếp tục được điều tra làm rõ để xử lý đúng người, đúng tội theo quy định."
         ]
         cta = "Bạn nghĩ hành vi này nên bị xử phạt thế nào cho thích đáng? Hãy bình luận bên dưới và bấm theo dõi kênh nhé!"
     elif _match_topic(title, infra_keywords):
@@ -310,7 +335,10 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
             "Hàng trăm kỹ sư và công nhân đã làm việc xuyên ngày đêm, vượt qua muôn vàn khó khăn trên công trường.",
             "Tuyến huyết mạch này khi vận hành sẽ rút ngắn một nửa thời gian di chuyển và giảm hẳn áp lực giao thông.",
             "Không chỉ vậy, đây còn là đòn bẩy kinh tế chiến lược kết nối giao thương giữa các vùng trọng điểm.",
-            "Diện mạo hạ tầng đất nước đang thực sự thay đổi từng ngày với những công trình vươn tầm thời đại."
+            "Diện mạo hạ tầng đất nước đang thực sự thay đổi từng ngày với những công trình vươn tầm thời đại.",
+            "Những nhịp cầu lớn vươn mình qua biển và sông dài thể hiện trí tuệ và khát vọng của người thợ Việt Nam.",
+            "Dự án không chỉ giải quyết bài toán giao thông mà còn mở ra không gian phát triển kinh tế mới.",
+            "Một cột mốc đáng tự hào khẳng định bước chuyển mình mạnh mẽ của hạ tầng đất nước."
         ]
         cta = "Bạn đã sẵn sàng trải nghiệm tuyến đường mới này chưa? Hãy để lại cảm nghĩ và follow kênh nhé!"
     elif _match_topic(title, tech_keywords):
@@ -319,7 +347,10 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
             "Đột phá này đạt được nhờ nghiên cứu bền bỉ và ứng dụng những công nghệ thế hệ hoàn toàn mới.",
             "Các chuyên gia hàng đầu khẳng định đây là bước nhảy vọt quan trọng làm thay đổi toàn bộ cuộc chơi.",
             "Không chỉ tối ưu hóa hiệu năng, giải pháp này còn mở ra tiềm năng ứng dụng khổng lồ trong tương lai gần.",
-            "Cả thế giới đang dõi theo bước chuyển mình ngoạn mục này với những kỳ vọng to lớn."
+            "Cả thế giới đang dõi theo bước chuyển mình ngoạn mục này với những kỳ vọng to lớn.",
+            "Những rào cản kỹ thuật phức tạp nhất nay đã được các nhà khoa học từng bước vượt qua.",
+            "Tính ứng dụng thực tế cao mở ra cơ hội thương mại hóa trên diện rộng trong thời gian rất ngắn.",
+            "Một kỷ nguyên công nghệ mới đang dần định hình và mang lại lợi ích thiết thực cho hàng triệu người."
         ]
         cta = "Bạn có tin công nghệ này sẽ sớm phổ biến tại Việt Nam không? Chia sẻ ngay góc nhìn của bạn nhé!"
     elif _match_topic(title, green_keywords):
@@ -328,7 +359,10 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
             "Những con số ấn tượng vừa được công bố cho thấy quyết tâm mạnh mẽ trong việc phát triển năng lượng sạch.",
             "Các giải pháp công nghệ xanh đang được triển khai đồng loạt và nhận được sự hưởng ứng rất lớn từ cộng đồng.",
             "Mỗi bước tiến hôm nay đều là nền tảng quý giá cho cuộc sống trong lành của các thế hệ mai sau.",
-            "Một tín hiệu vô cùng đáng mừng cho thấy nỗ lực chuyển đổi xanh đang gặt hái những quả ngọt đầu tiên."
+            "Một tín hiệu vô cùng đáng mừng cho thấy nỗ lực chuyển đổi xanh đang gặt hái những quả ngọt đầu tiên.",
+            "Sự chung tay của cộng đồng và các doanh nghiệp đang tạo nên những đổi thay tích cực mỗi ngày.",
+            "Những mô hình sinh thái kiểu mẫu đang chứng minh hiệu quả vượt trội cả về kinh tế lẫn môi trường.",
+            "Hành trình kiến tạo tương lai xanh đang bước vào giai đoạn tăng tốc đầy hứa hẹn."
         ]
         cta = "Bạn đánh giá thế nào về bước tiến đáng mừng này? Hãy để lại bình luận và đăng ký kênh nhé!"
     elif _match_topic(title, admin_keywords):
@@ -337,44 +371,56 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
             "Quy trình xử lý được đổi mới mạnh mẽ giúp người dân và doanh nghiệp tiết kiệm rất nhiều thời gian công sức.",
             "Sự vào cuộc quyết liệt này đã nhận được sự đồng tình và đánh giá rất cao từ cộng đồng.",
             "Các giải pháp số hóa đang tiếp tục được đẩy mạnh nhằm nâng cao chất lượng phục vụ lâu dài.",
-            "Một bước chuyển mình tích cực củng cố niềm tin và tạo động lực phát triển mới cho địa phương."
+            "Một bước chuyển mình tích cực củng cố niềm tin và tạo động lực phát triển mới cho địa phương.",
+            "Tinh thần trách nhiệm và sự cầu thị của chính quyền đã tạo nên sự gắn kết sâu sắc với nhân dân.",
+            "Những rào cản hành chính cũ đang dần được tháo gỡ để nhường chỗ cho sự thuận tiện và minh bạch.",
+            "Hiệu quả thực tế đạt được là minh chứng rõ nhất cho tinh thần hành động vì người dân."
         ]
         cta = "Bạn cảm thấy sự thay đổi này như thế nào? Hãy chia sẻ suy nghĩ bên dưới và theo dõi kênh nhé!"
     else:
         connectors = [
             "Câu chuyện này đang nhanh chóng trở thành tâm điểm chú ý trên khắp các diễn đàn mạng xã hội.",
-            "Điều khiến dư luận bất ngờ nhất chính là những tình tiết mới vừa được hé lộ xung quanh sự việc.",
-            "Rất nhiều luồng ý kiến đa chiều đã nổ ra, tạo nên những cuộc thảo luận vô cùng sôi nổi.",
-            "Dù nhìn nhận ở góc độ nào, sự việc này cũng phản ánh một góc nhìn thực tế rất đáng để chúng ta suy ngẫm.",
-            "Những diễn biến tiếp theo chắc chắn sẽ còn thu hút sự quan tâm lớn của đông đảo cộng đồng."
+            "Điều khiến cộng đồng ấn tượng nhất chính là những chi tiết đặc biệt vừa được hé lộ xung quanh sự việc.",
+            "Rất nhiều luồng ý kiến và phản hồi tích cực đã nổ ra, tạo nên những cuộc thảo luận vô cùng sôi nổi.",
+            "Dù nhìn nhận ở góc độ nào, sự việc này cũng mang đến những giá trị và cảm hứng rất đáng để chúng ta cùng theo dõi.",
+            "Những diễn biến tiếp theo chắc chắn sẽ còn thu hút sự quan tâm lớn của đông đảo người hâm mộ.",
+            "Các khía cạnh thực tế của sự việc đang tiếp tục được nhiều chuyên gia và cộng đồng phân tích sâu sắc.",
+            "Sự quan tâm rộng rãi này phản ánh đúng mối quan tâm sâu sắc của công chúng trong đời sống hiện nay.",
+            "Những góc nhìn đa chiều sẽ giúp chúng ta có thêm những bài học và cảm nhận trọn vẹn hơn."
         ]
-        cta = "Quan điểm của bạn về câu chuyện này thế nào? Hãy để lại bình luận và bấm đăng ký kênh để cập nhật tin mới!"
+        cta = "Quan điểm của bạn về sự việc này thế nào? Hãy để lại bình luận và bấm đăng ký kênh để cập nhật tin mới!"
 
     # Spoken transitional prefixes to make narrative flow naturally
     spoken_prefixes = [
-        "Theo thông tin mới nhất, ",
+        "Theo thông tin cập nhật, ",
         "Đáng chú ý là ",
         "Điều khiến nhiều người bất ngờ là ",
         "Chưa dừng lại ở đó, ",
-        "Cụ thể hơn, ",
-        "Đặc biệt, ",
-        "Theo những chia sẻ mới đây, "
+        "Điểm nhấn đặc biệt là ",
+        "Theo những hình ảnh vừa được chia sẻ, "
     ]
 
     for i in range(needed_body):
         if i < len(pool):
-            sent = pool[i]
-            # Add a natural spoken connective if sentence doesn't already have one
-            prefix = spoken_prefixes[i % len(spoken_prefixes)]
-            lower_first = sent[0].lower() + sent[1:]
-            if not any(sent.lower().startswith(p.lower().strip()) for p in ["mới đây", "theo", "đáng chú ý", "điều", "chưa", "cụ thể", "đặc biệt"]):
+            raw_s = pool[i].strip()
+            # Clean awkward comma prefixes like "Mới nhất, các nghệ sĩ..."
+            clean_s = re.sub(r'^(mới nhất|cụ thể hơn|đáng chú ý là|theo đó|theo ghi nhận thực tế|theo ghi nhận)[:,\s]+', '', raw_s, flags=re.IGNORECASE).strip()
+            if clean_s:
+                clean_s = clean_s[0].upper() + clean_s[1:]
+            sent = clean_s or raw_s
+
+            # Add prefix only if sentence doesn't already start with an introductory word
+            intro_words = ["mới đây", "theo", "đáng chú ý", "điều", "chưa", "cụ thể", "đặc biệt", "với", "tại", "sau khi", "không khí", "các", "hàng", "sân khấu"]
+            if not any(sent.lower().startswith(w) for w in intro_words):
+                prefix = spoken_prefixes[i % len(spoken_prefixes)]
+                lower_first = sent[0].lower() + sent[1:] if len(sent) > 1 else sent
                 sent = prefix + lower_first
         else:
             conn_idx = (i - len(pool)) % len(connectors)
             sent = connectors[conn_idx]
 
         w_count = len(sent.split())
-        dur = round(max(4.2, (w_count / 2.8) + 0.3), 1)
+        dur = round(max(4.8, min(5.4, (w_count / 3.2) + 0.3)), 1)
         scenes.append({
             "scene_id": len(scenes) + 1,
             "type": f"body_{i + 1}",
@@ -389,7 +435,7 @@ def build_viral_storyboard(title: str, clean_text: str, claims: List[Any], num_s
         "scene_id": len(scenes) + 1,
         "type": "cta",
         "text": cta,
-        "estimated_duration_seconds": round(max(4.2, (cta_words / 2.8) + 0.3), 1),
+        "estimated_duration_seconds": round(max(4.8, min(5.6, (cta_words / 3.2) + 0.3)), 1),
         "visual_prompt": "Đồ họa tương tác đăng ký kênh tin tức sắc nét 9:16"
     })
 
@@ -774,13 +820,13 @@ class TaskHandlers:
                     script_payload["artifact_file"] = str(global_file)
                     return script_payload
 
-        # Exact pacing: ~16-18 spoken words per scene lasting ~5.5-6.0s
+        # Exact pacing: ~16-20 spoken words per scene lasting ~5.0-5.5s
         if target_duration <= 35:
-            num_scenes = 5
-        elif target_duration <= 70:
+            num_scenes = 6
+        elif target_duration <= 65:
             num_scenes = 10
         else:
-            num_scenes = 14
+            num_scenes = 12
 
         niche = input_payload.get("niche") or upstream_data.get("niche") or "engaging"
 
@@ -788,11 +834,13 @@ class TaskHandlers:
             "Bạn là Chuyên gia Biên kịch Video Ngắn (TikTok, YouTube Shorts, Reels) triệu view hàng đầu Việt Nam.\n"
             "Mục tiêu của bạn: Viết kịch bản giật gân, cuốn hút, khơi gợi tò mò cực độ (Curiosity Gap), giữ chân người xem 100% thời lượng.\n"
             "NGUYÊN TẮC BẮT BUỘC:\n"
-            "1. 100% văn phong NÓI (conversational Vietnamese), tự nhiên, nhịp điệu dồn dập, như người thật đang kể chuyện trực tiếp cho khán giả.\n"
-            "2. TUYỆT ĐỐI CẤM văn phong báo chí hành chính, công văn, báo cáo ủy ban, hay 'văn mẫu' sáo rỗng (như 'toàn bộ diễn biến đã được rà soát', 'kết quả thể hiện nỗ lực rất lớn', 'theo ghi nhận thực tế', 'sự việc đang tiếp tục tạo hiệu ứng').\n"
-            "3. Mỗi phân cảnh chỉ chứa 1 câu súc tích (14-18 từ), kết nối mạch lạc bằng từ nối cảm xúc ('Thế nhưng...', 'Điều bất ngờ là...', 'Chưa dừng lại ở đó...', 'Đặc biệt...', 'Ngay lập tức...').\n"
-            "4. Phân cảnh 1 (hook): Cực sốc, đánh thẳng vào tâm lý tò mò hoặc mâu thuẫn lớn, dưới 18 từ, tuyệt đối không đọc lại nguyên văn tiêu đề.\n"
-            "5. Phân cảnh cuối (cta): Đặt một câu hỏi kích thích tranh luận mạnh mẽ để người xem bình luận sôi nổi."
+            "1. 100% văn phong NÓI (conversational Vietnamese), tự nhiên, nhịp điệu dồn dập, giàu cảm xúc, như người thật đang kể chuyện trực tiếp cho khán giả.\n"
+            "2. TUYỆT ĐỐI CẤM văn phong báo chí hành chính, công văn, báo cáo ủy ban, hay 'văn mẫu' sáo rỗng (như 'toàn bộ diễn biến đã được rà soát', 'kết quả thể hiện nỗ lực rất lớn', 'theo ghi nhận thực tế', 'sự việc đang tiếp tục tạo hiệu ứng', 'tính pháp lý nghiêm ngặt').\n"
+            "3. Nếu là chủ đề âm nhạc, concert, giải trí: Phải dùng giọng văn hào hứng, cuồng nhiệt của người hâm mộ, tôn vinh nghệ sĩ và cảm xúc khán giả, tuyệt đối không dùng từ tiêu cực như 'cú sốc', 'pháp luật'.\n"
+            "4. Mỗi phân cảnh chứa 16-22 từ tiếng Việt tự nhiên, chuyển ý mượt mà bằng từ nối cảm xúc ('Thế nhưng...', 'Điều bất ngờ là...', 'Chưa dừng lại ở đó...', 'Đặc biệt...', 'Hơn thế nữa...').\n"
+            "5. Phân cảnh 1 (hook): Cực sốc hoặc hào hứng, dưới 18 từ, đánh thẳng vào tâm lý tò mò, tuyệt đối không đọc lại nguyên văn tiêu đề.\n"
+            "6. Phân cảnh cuối (cta): Đặt một câu hỏi kích thích tranh luận mạnh mẽ để người xem bình luận sôi nổi.\n"
+            "7. Yêu cầu định dạng: Bắt buộc trả về đúng định dạng JSON object hợp lệ (JSON format)."
         )
 
         prompt = (
@@ -801,9 +849,9 @@ class TaskHandlers:
             f"Phong cách kịch bản: {niche}\n"
             f"Luận điểm chính: {claims}\n"
             f"Nội dung nguồn: {clean_text}\n"
-            f"Thời lượng yêu cầu: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh chứa 14-18 từ tiếng Việt cuốn hút).\n"
+            f"Thời lượng yêu cầu: {target_duration} giây (Chính xác {num_scenes} phân cảnh, mỗi phân cảnh chứa 16-22 từ tiếng Việt cuốn hút, đảm bảo tổng thời lượng đọc đạt chuẩn 48 đến 56 giây).\n"
             f"QUY TẮC BẮT BUỘC:\n"
-            f"1. Phân cảnh 1 (hook): Cực kỳ giật gân, dưới 18 từ, khơi gợi tò mò, KHÔNG dùng cụm từ 'Theo ghi nhận', 'Nóng: [nguyên văn tiêu đề]'.\n"
+            f"1. Phân cảnh 1 (hook): Cực kỳ giật gân hoặc hào hứng, dưới 18 từ, khơi gợi tò mò, KHÔNG dùng cụm từ 'Theo ghi nhận', 'Nóng: [nguyên văn tiêu đề]'.\n"
             f"2. Các phân cảnh thân bài: Mạch lạc, tự nhiên, chuyển cảnh trôi chảy, tuyệt đối KHÔNG lặp lại các cụm từ sáo rỗng.\n"
             f"3. Phân cảnh cuối (cta): Kêu gọi thảo luận, bình luận và đăng ký kênh ngắn gọn.\n\n"
             f"Bắt buộc trả về duy nhất một JSON object có cấu trúc:\n"
@@ -840,7 +888,7 @@ class TaskHandlers:
                         clean_txt = make_viral_hook(title, niche=niche)
                     sc["text"] = clean_txt
                     w_cnt = len(clean_txt.split())
-                    sc["estimated_duration_seconds"] = round(max(3.8, (w_cnt / 2.8) + 0.3), 1)
+                    sc["estimated_duration_seconds"] = round(max(4.8, min(6.0, (w_cnt / 3.0) + 0.4)), 1)
                     sanitized_scenes.append(sc)
                 parsed["scenes"] = sanitized_scenes
 
